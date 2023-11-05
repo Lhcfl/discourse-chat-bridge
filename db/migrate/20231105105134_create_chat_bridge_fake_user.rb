@@ -5,8 +5,8 @@ class CreateChatBridgeFakeUser < ActiveRecord::Migration[7.0]
     create_table :chat_bridge_fake_users do |t|
       t.integer :user_id
       t.integer :provider_id
-      t.bigint :external_user_id
-      t.text :external_username
+      t.bigint :external_user_id, index: true
+      t.text :external_username, index: true
     end
   end
 end

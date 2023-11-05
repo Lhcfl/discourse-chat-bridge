@@ -3,7 +3,7 @@
 class CreateChatBridgeTelegramUserInfos < ActiveRecord::Migration[7.0]
   def change
     create_table :chat_bridge_telegram_user_infos do |t|
-      t.integer :user_id
+      t.integer :user_id, index: true
       t.bigint :tg_user_id
       t.text :avatar_file_id
     end
