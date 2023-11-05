@@ -7,3 +7,7 @@ module ::ChatBridgeModule
     config.autoload_paths << File.join(config.root, "lib")
   end
 end
+
+require_relative "discourse_chat_patches/bridge_create_message"
+require_relative "discourse_chat_patches/ghost_user_guardian"
+require_relative "provider/telegram/telegram_bridge"
