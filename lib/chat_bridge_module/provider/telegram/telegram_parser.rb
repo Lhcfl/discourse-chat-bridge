@@ -279,26 +279,33 @@ module ::ChatBridgeModule
         end
 
         if msg["document"].present?
-          file = msg["document"]
-          if file["thumb"].present?
-            file = file["thumb"]
-          elsif file["thumbnail"].present?
-            file = file["thumbnail"]
-          end
-
           begin
             ext = msg["file_name"] and msg["file_name"].match(/\.[^\.]+$/)[0]
-
+            file = msg["document"]
             bot.get_upload_from_file(
               user:,
               file:,
               type: "chat-composer",
-              filename: msg["file_name"] || file,
+              filename: msg["file_name"] || "file",
               ext:,
-            ) { |upload| upload.id and upload_ids.push(upload.id) }
+            ) do |upload|
+              if upload.id
+                upload_ids.push(upload.id)
+              else
+                if file["thumb"].present? || ile["thumbnail"].present?
+                  file = file["thumb"] || file["thumbnail"]
+                  bot.get_upload_from_file(
+                    user:,
+                    file:,
+                    type: "chat-composer",
+                    filename: msg["file_name"] || "file",
+                  ) { |upload2| upload2.id and upload_ids.push(upload2.id) }
+                end
+              end
+            end
           rescue => exception
             Rails.logger.warn(
-              "[Telegram Bridge] Received a telegram message with sticker got error. details: #{JSON.dump(exception)}",
+              "[Telegram Bridge] Received a telegram message with document got error. details: #{JSON.dump(exception)}",
             )
           end
         end
