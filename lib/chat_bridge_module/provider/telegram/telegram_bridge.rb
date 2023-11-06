@@ -132,31 +132,26 @@ module ::ChatBridgeModule
         end
       end
 
-      ::ChatBridgeModule::Provider::TelegramBridge::TelegramEvent.on(:message) do |message|
-        Scheduler::Defer.later("Bridge a telegram message to discourse") do
-          ::ChatBridgeModule::Provider::TelegramBridge::HandleTgMessage
-            .call(message:)
-            .tap do |result|
-              if result.failure?
-                Rails.logger.warn(
-                  "[Telegram Bridge] Failed to bridge message: \n#{result.inspect_steps.inspect}\n#{result.inspect_steps.error} \n----------\nIn message: #{YAML.dump(message)}",
-                )
-              end
-            end
-        end
-      end
+      %i[message edited_message].each do |event|
+        ::ChatBridgeModule::Provider::TelegramBridge::TelegramEvent.on(event) do |message|
+          Scheduler::Defer.later("Bridge a telegram #{event} to discourse") do
+            result =
+              ::ChatBridgeModule::Provider::TelegramBridge::HandleTgMessage.call(
+                message:,
+                edit: event == :edited_message,
+              )
 
-      ::ChatBridgeModule::Provider::TelegramBridge::TelegramEvent.on(:edited_message) do |message|
-        Scheduler::Defer.later("Bridge a telegram message edit to discourse") do
-          ::ChatBridgeModule::Provider::TelegramBridge::HandleTgMessage
-            .call(message:, edit: true)
-            .tap do |result|
-              if result.failure?
-                Rails.logger.warn(
-                  "[Telegram Bridge] Failed to bridge edited_message: \n#{result.inspect_steps.inspect}\n#{result.inspect_steps.error} \n----------\nIn message: #{YAML.dump(message)}\n----------\nMessage to edit: #{YAML.dump(result.message_to_edit)}\n",
-                )
-              end
+            if result.failure?
+              Rails.logger.warn(
+                "[Telegram Bridge] Failed to bridge message: \n" +
+                  "#{result.inspect_steps.inspect}\n#{result.inspect_steps.error}\n" +
+                  "----------\n" + "In message:\n" + "#{YAML.dump(message)}\n" +
+                  if result.message_to_edit
+                    "----------\n" + "Message to edit:\n" + "#{YAML.dump(result.message_to_edit)}\n"
+                  end,
+              )
             end
+          end
         end
       end
 
@@ -246,49 +241,23 @@ module ::ChatBridgeModule
         end
       end
 
-      DiscourseEvent.on(:chat_message_created) do |message, channel, user|
-        Scheduler::Defer.later("Bridge a discourse message to telegram") do
-          ::ChatBridgeModule::Provider::TelegramBridge::HandleDiscourseMessage
-            .call(message:, channel:, user:, event: :chat_message_created)
-            .tap do |result|
-              if result.failure?
-                unless result.inspect_steps.error == "BRIDGE_BACK"
-                  Rails.logger.warn(
-                    "[Telegram Bridge] Failed to bridge message to telegram: \n#{result.inspect_steps.inspect}\n#{result.inspect_steps.error} \n----------\nIn message: #{YAML.dump(message)}",
-                  )
-                end
-              end
+      %i[chat_message_created chat_message_edited chat_message_trashed].each do |event|
+        DiscourseEvent.on(event) do |message, channel, user|
+          Scheduler::Defer.later("Bridge #{event} to telegram") do
+            result =
+              ::ChatBridgeModule::Provider::TelegramBridge::HandleDiscourseMessage.call(
+                message:,
+                channel:,
+                user:,
+                event:,
+              )
+
+            if result.failure? && result.inspect_steps.error != "BRIDGE_BACK"
+              Rails.logger.warn(
+                "[Discourse -> Telegram] Failed in #{event}: \n#{result.inspect_steps.inspect}\n#{result.inspect_steps.error} \n----------\nIn message: #{YAML.dump(message)}",
+              )
             end
-        end
-      end
-      DiscourseEvent.on(:chat_message_edited) do |message, channel, user|
-        Scheduler::Defer.later("Bridge a discourse message to telegram") do
-          ::ChatBridgeModule::Provider::TelegramBridge::HandleDiscourseMessage
-            .call(message:, channel:, user:, event: :chat_message_edited)
-            .tap do |result|
-              if result.failure?
-                unless result.inspect_steps.error == "BRIDGE_BACK"
-                  Rails.logger.warn(
-                    "[Telegram Bridge] Failed to bridge message to telegram: \n#{result.inspect_steps.inspect}\n#{result.inspect_steps.error} \n----------\nIn message: #{YAML.dump(message)}",
-                  )
-                end
-              end
-            end
-        end
-      end
-      DiscourseEvent.on(:chat_message_trashed) do |message, channel, user|
-        Scheduler::Defer.later("Bridge a discourse message to telegram") do
-          ::ChatBridgeModule::Provider::TelegramBridge::HandleDiscourseMessage
-            .call(message:, channel:, user:, event: :chat_message_trashed)
-            .tap do |result|
-              if result.failure?
-                unless result.inspect_steps.error == "BRIDGE_BACK"
-                  Rails.logger.warn(
-                    "[Telegram Bridge] Failed to bridge message to telegram: \n#{result.inspect_steps.inspect}\n#{result.inspect_steps.error} \n----------\nIn message: #{YAML.dump(message)}",
-                  )
-                end
-              end
-            end
+          end
         end
       end
     end
