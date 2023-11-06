@@ -75,7 +75,7 @@ module ::ChatBridgeModule
 
                 if SiteSetting.verbose_upload_logging
                   Rails.logger.warn(
-                    "Verbose Upload Logging: Downloading tg avatar from #{download_url}",
+                    "Verbose Upload Logging: Downloading Tg file #{file_id} from #{download_url}",
                   )
                 end
 

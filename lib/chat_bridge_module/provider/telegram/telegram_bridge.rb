@@ -105,7 +105,7 @@ module ::ChatBridgeModule
 
         def message_creation_succeed(message_creation:, **)
           if message_creation.failure?
-            raise "In message creation: #{creator.inspect_steps.inspect}\n#{creator.inspect_steps.error}"
+            raise "In message creation: #{message_creation.inspect_steps.inspect}\n#{message_creation.inspect_steps.error}"
           end
           true
         end

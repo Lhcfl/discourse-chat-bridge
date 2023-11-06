@@ -6,27 +6,28 @@ module ::ChatBridgeModule
       class Parser
         def initialize(str, entities)
           @only_str = str
-          @entities = entities
+          if entities.class == Array
+            @entities = entities
+          else
+            @entities = entities.keys.map { |k| @entities[k] }
+          end
           @entities_grouped = []
           group = []
           o_a_now = 0
           far_b_now = 0
-          @entities
-            .keys
-            .map { |k| @entities[k] }
-            .each do |ent|
-              o_a, o_b = ent["offset"].to_i, ent["offset"].to_i + ent["length"].to_i
-              if o_a != o_a_now
-                @entities_grouped.push(group)
-                if o_a != far_b_now
-                  @entities_grouped.push([{ o_a: far_b_now, o_b: o_a, ent: { type: "plain" } }])
-                end
-                o_a_now = o_a
-                group = []
+          @entities.each do |ent|
+            o_a, o_b = ent["offset"].to_i, ent["offset"].to_i + ent["length"].to_i
+            if o_a != o_a_now
+              @entities_grouped.push(group)
+              if o_a != far_b_now
+                @entities_grouped.push([{ o_a: far_b_now, o_b: o_a, ent: { type: "plain" } }])
               end
-              group.unshift({ o_a:, o_b:, ent: })
-              far_b_now = [o_b, far_b_now].max
+              o_a_now = o_a
+              group = []
             end
+            group.unshift({ o_a:, o_b:, ent: })
+            far_b_now = [o_b, far_b_now].max
+          end
           @entities_grouped.push(group)
           @entities_grouped.push(
             [{ o_a: far_b_now, o_b: 1_145_141_919_810, ent: { type: "plain" } }],
@@ -226,9 +227,15 @@ module ::ChatBridgeModule
             puts "Getting photo"
             puts msg["photo"]
             puts "----------"
+            photo = msg["photo"]
+            if msg["photo"].class == Array
+              photo = photo[-1]
+            else
+              photo = photo[photo.keys[-1]]
+            end
             bot.get_upload_from_file(
               user:,
-              file: msg["photo"][msg["photo"].keys[-1]],
+              file: photo,
               type: "chat-composer",
               filename: "photo",
             ) { |upload| upload_ids.push(upload.id) }

@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-
 # Derpecated Methods Backup
 
 # require_relative "telegram_initializer"
