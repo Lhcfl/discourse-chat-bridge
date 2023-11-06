@@ -15,6 +15,8 @@ end
 
 require_relative "app/models/chat_bridge_fake_user"
 require_relative "app/models/chat_bridge_telegram_user_info"
+require_relative "app/models/chat_bridge_telegram_message"
+require_relative "app/models/chat_bridge_telegram_upload"
 
 after_initialize do
   # Code which should run after Rails has finished booting

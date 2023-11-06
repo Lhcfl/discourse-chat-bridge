@@ -6,7 +6,7 @@ class CreateChatBridgeFakeUser < ActiveRecord::Migration[7.0]
       t.integer :user_id
       t.integer :provider_id
       t.bigint :external_user_id, index: true
-      t.text :external_username, index: true
+      t.string :external_username, limit: 100, index: true
     end
   end
 end

@@ -11,9 +11,11 @@ module ::ChatBridgeModule
       PROVIDER_ID = 1
       PROVIDER_SLUG = "Telegram".freeze
 
-      def self.handleTgMessage(message)
+      def self.handleTgMessage(message, edit = false)
         channel_id =
           ::ChatBridgeModule::Provider::TelegramBridge.getChannelId? message["chat"]["id"]
+
+        bot = ::ChatBridgeModule::Provider::TelegramBridge::TelegramBot.new(channel_id)
 
         if channel_id.nil?
           return(
@@ -45,18 +47,49 @@ module ::ChatBridgeModule
             "#{message["from"]["id"]}.tgid",
           )
 
-        creator =
-          ::ChatBridgeModule::CreateMessage.call(
-            chat_channel_id: channel_id,
-            guardian: ::ChatBridgeModule::GhostUserGuardian.new(fake_user.user),
-            message:
-              ::ChatBridgeModule::Provider::TelegramBridge.make_markdown_from_message(message) ||
-                "[一条消息，但本版本的同步插件不支持]",
-          )
+        creator = nil
+        if edit
+          message_id = ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.find_by(
+            tg_msg_id: message["message_id"],
+            tg_chat_id: message["chat"]["id"],
+          ).message_id
+          creator =
+            ::ChatBridgeModule::UpdateMessage.call(
+              message_id:,
+              guardian: ::ChatBridgeModule::GhostUserGuardian.new(fake_user.user),
+              **::ChatBridgeModule::Provider::TelegramBridge.make_discourse_message(
+                bot,
+                fake_user.user,
+                message,
+              ),
+            )
+        else
+          creator =
+            ::ChatBridgeModule::CreateMessage.call(
+              chat_channel_id: channel_id,
+              guardian: ::ChatBridgeModule::GhostUserGuardian.new(fake_user.user),
+              **::ChatBridgeModule::Provider::TelegramBridge.make_discourse_message(
+                bot,
+                fake_user.user,
+                message,
+              ),
+            )
+        end
 
         if creator.failure?
           Rails.logger.warn "[Telegram Bridge] Chat message failed to send:\n#{creator.inspect_steps.inspect}\n#{creator.inspect_steps.error}"
+          return nil
         end
+
+        ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.create_or_update!(
+          tg_msg_id: message["message_id"],
+          tg_chat_id: message["chat"]["id"],
+          message_id: creator.message.id,
+          raw: JSON.dump(message),
+          user_id: fake_user.user.id,
+          tg_user_id: message["from"].present? && message["from"]["id"],
+          chat_id: channel_id,
+        )
 
         update_user_profile_from_tg(fake_user.user, message, channel_id)
       end
@@ -64,6 +97,12 @@ module ::ChatBridgeModule
       ::ChatBridgeModule::Provider::TelegramBridge::TelegramEvent.on(:message) do |message|
         Scheduler::Defer.later("Bridge a telegram message to discourse") do
           ::ChatBridgeModule::Provider::TelegramBridge.handleTgMessage message
+        end
+      end
+
+      ::ChatBridgeModule::Provider::TelegramBridge::TelegramEvent.on(:edited_message) do |message|
+        Scheduler::Defer.later("Bridge a telegram message to discourse") do
+          ::ChatBridgeModule::Provider::TelegramBridge.handleTgMessage message, true
         end
       end
     end

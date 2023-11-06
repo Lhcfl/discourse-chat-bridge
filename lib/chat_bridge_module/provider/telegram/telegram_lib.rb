@@ -41,6 +41,10 @@ module ::ChatBridgeModule
 
           uri = URI("https://api.telegram.org/bot#{@token}/#{methodName}")
 
+          puts "---------------------"
+          puts "Sending Telegram API request to: https://api.telegram.org/bot#{@token}/#{methodName}"
+          puts "---------------------"
+
           req = Net::HTTP::Post.new(uri, "Content-Type" => "application/json")
           req.body = message.to_json
           response = http.request(req)
@@ -48,6 +52,93 @@ module ::ChatBridgeModule
           responseData = JSON.parse(response.body)
 
           responseData
+        end
+
+        def download_file_from_file_id(**para, &after_download)
+          user, file_id, type, filename = para[:user], para[:file_id], para[:type], para[:filename]
+
+          type ||= "composer"
+          filename ||= "#{Time.now.to_i}"
+
+          file_path_res = _request("getFile", { file_id: })
+
+          if file_path_res["ok"] && file_path_res["result"] && file_path_res["result"]["file_path"]
+            DistributedMutex.synchronize("download_file_#{file_id}for_#{user.id}") do
+              begin
+                max = Discourse.avatar_sizes.max
+
+                download_url =
+                  "https://api.telegram.org/file/bot#{@token}/#{file_path_res["result"]["file_path"]}"
+
+                puts "download from #{download_url}"
+
+                if SiteSetting.verbose_upload_logging
+                  Rails.logger.warn(
+                    "Verbose Upload Logging: Downloading tg avatar from #{download_url}",
+                  )
+                end
+
+                # follow redirects in case tgavatar change rules on us
+                tempfile =
+                  FileHelper.download(
+                    download_url,
+                    max_file_size: SiteSetting.max_image_size_kb.kilobytes,
+                    tmp_file_name: "#{filename}",
+                    skip_rate_limit: true,
+                    verbose: false,
+                    follow_redirect: true,
+                  )
+
+                if tempfile
+                  ext = File.extname(tempfile)
+                  ext = ".png" if ext.blank?
+
+                  upload =
+                    UploadCreator.new(
+                      tempfile,
+                      "#{filename}#{ext}",
+                      origin: download_url,
+                      type:,
+                    ).create_for(user.id)
+
+                  puts "Upload ok: id = #{upload.id}"
+
+                  after_download.call upload
+                end
+              rescue OpenURI::HTTPError => e
+                raise e if e.io&.status[0].to_i != 404
+              ensure
+                tempfile&.close!
+              end
+            end
+          end
+        end
+
+        def get_upload_from_file(**para, &after_get)
+          user, file, type, filename = para[:user], para[:file], para[:type], para[:filename]
+
+          return nil if file["file_id"].nil?
+
+          if file["file_unique_id"].present?
+            existed_upload =
+              ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramUpload.find_by(
+                unique_id: file["file_unique_id"],
+              )
+            if existed_upload.present?
+              upload = Upload.find_by(id: existed_upload.upload_id)
+              upload.user_id = user.id
+              upload.save!
+              after_get.call upload
+              return nil
+            end
+            download_file_from_file_id(user:, file_id: file["file_id"], type:, filename:) do |upl|
+              ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramUpload.create!(
+                unique_id: file["file_unique_id"],
+                upload_id: upl.id,
+              )
+              after_get.call upl
+            end
+          end
         end
       end
 
@@ -71,7 +162,7 @@ module ::ChatBridgeModule
             response = bot._request("setWebhook", message)
             if response["ok"] != true
               # If setting up webhook failed, disable provider
-              SiteSetting.chat_bridge_enabled = false
+              # SiteSetting.chat_bridge_enabled = false
               Rails.logger.error(
                 "Failed to setup telegram webhook for chat channel #{cid}. Message data= " +
                   message.to_json + " response=" + response.to_json,

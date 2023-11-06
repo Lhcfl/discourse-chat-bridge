@@ -14,5 +14,13 @@ module ::ChatBridgeModule
     def can_create_direct_message?(*)
       true
     end
+
+    def can_modify_channel_message?(*)
+      true
+    end
+
+    def can_edit_chat?(*)
+      true
+    end
   end
 end
