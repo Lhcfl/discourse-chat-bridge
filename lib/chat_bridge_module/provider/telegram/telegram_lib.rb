@@ -180,7 +180,7 @@ module ::ChatBridgeModule
           .split("|")
           .each do |config|
             cid, gid, tok = config.split(",")
-            return cid if gid == groupId
+            return cid if gid.to_s == groupId.to_s
           end
 
         nil
