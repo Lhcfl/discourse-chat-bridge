@@ -1,4 +1,4 @@
-# **Plugin Name** Plugin
+# **Discourse Chat Bridge** Plugin
 
 **Plugin Summary**
 
