@@ -111,20 +111,25 @@ module ::ChatBridgeModule
 
       def self.make_telegram_message(bot:, message:, channel:, user:, event:)
         args = { bot:, message:, channel:, user: }
-        creator =
-          case event
-          when :chat_message_created
-            TelegramMessageCreator.call(**args)
-          when :chat_message_edited
-            TelegramMessageEditor.call(**args)
-          when :chat_message_trashed
-            TelegramMessageDeleter.call(**args)
-          else
-            raise "Not implemented chat message event"
-          end
 
-        if creator.failure?
-          raise "Failed to make telegram messages: #{creator.inspect_steps.inspect}\n#{creator.inspect_steps.error}"
+        begin
+          creator =
+            case event
+            when :chat_message_created
+              TelegramMessageCreator.call(**args)
+            when :chat_message_edited
+              TelegramMessageEditor.call(**args)
+            when :chat_message_trashed
+              TelegramMessageDeleter.call(**args)
+            else
+              raise "Not implemented chat message event"
+            end
+        rescue => exception
+          raise "Failed to make telegram messages: #{exception}"
+        ensure
+          if creator&.failure?
+            raise "Failed to make telegram messages: #{creator.inspect_steps.inspect}\n#{creator.inspect_steps.error}"
+          end
         end
 
         creator.response

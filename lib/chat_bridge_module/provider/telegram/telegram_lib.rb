@@ -43,7 +43,7 @@ module ::ChatBridgeModule
 
           Rails.logger.debug(
             "Sending Telegram API request to: https://api.telegram.org/bot#{@token}/#{methodName}" +
-              "param: \n#{YAML.dump(message)}",
+              "\n\nparam: \n#{YAML.dump(message)}",
           )
 
           req = Net::HTTP::Post.new(uri, "Content-Type" => "application/json")
@@ -123,6 +123,10 @@ module ::ChatBridgeModule
               ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramUpload.find_by(
                 unique_id: file["file_unique_id"],
               )
+            if existed_upload.upload_id == nil
+              existed_upload.destroy!
+              existed_upload = nil
+            end
             if existed_upload.present?
               upload = Upload.find_by(id: existed_upload.upload_id)
               upload.user_id = user.id
@@ -131,11 +135,13 @@ module ::ChatBridgeModule
               return nil
             end
             download_file_from_file_id(user:, file_id: file["file_id"], type:, filename:) do |upl|
-              ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramUpload.create!(
-                unique_id: file["file_unique_id"],
-                upload_id: upl.id,
-              )
-              after_get.call upl
+              if upl&.id != nil
+                ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramUpload.create!(
+                  unique_id: file["file_unique_id"],
+                  upload_id: upl.id,
+                )
+                after_get.call upl
+              end
             end
           end
         end

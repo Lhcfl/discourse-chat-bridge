@@ -235,7 +235,7 @@ module ::ChatBridgeModule
               file: photo,
               type: "chat-composer",
               filename: "photo",
-            ) { |upload| upload_ids.push(upload.id) }
+            ) { |upload| upload.id and upload_ids.push(upload.id) }
           rescue => exception
             Rails.logger.warn(
               "[Telegram Bridge] Received a telegram message with photo got error. details: #{JSON.dump(exception)}",
@@ -244,13 +244,52 @@ module ::ChatBridgeModule
         end
 
         if msg["sticker"].present?
+          file = msg["sticker"]
+          should_download = true
+          # TODO: support animated sticker
+          if file["is_animated"] == "true" || file["is_animated"] == true
+            if file["thumb"].present?
+              file = file["thumb"]
+              message += "*Animated sticker is not supported yet*"
+            elsif file["thumbnail"].present?
+              file = file["thumbnail"]
+              message += "*Animated sticker is not supported yet*"
+            else
+              message += "[Sticker] #{msg["sticker"]["emoji"]} *This sticker is not supported yet*"
+              should_download = false
+            end
+          end
+          if should_download
+            begin
+              bot.get_upload_from_file(
+                user:,
+                file:,
+                type: "chat-composer",
+                filename: "sticker-#{msg["sticker"]["emoji"]}",
+              ) { |upload| upload.id and upload_ids.push(upload.id) }
+            rescue => exception
+              Rails.logger.warn(
+                "[Telegram Bridge] Received a telegram message with sticker got error. details: #{JSON.dump(exception)}",
+              )
+            end
+          end
+        end
+
+        if msg["document"].present?
+          file = msg["document"]
+          if file["thumb"].present?
+            file = file["thumb"]
+          elsif file["thumbnail"].present?
+            file = file["thumbnail"]
+          end
+
           begin
             bot.get_upload_from_file(
               user:,
-              file: msg["sticker"],
+              file:,
               type: "chat-composer",
-              filename: "sticker-#{msg["sticker"]["emoji"]}",
-            ) { |upload| upload_ids.push(upload.id) }
+              filename: "file_name",
+            ) { |upload| upload.id and upload_ids.push(upload.id) }
           rescue => exception
             Rails.logger.warn(
               "[Telegram Bridge] Received a telegram message with sticker got error. details: #{JSON.dump(exception)}",
