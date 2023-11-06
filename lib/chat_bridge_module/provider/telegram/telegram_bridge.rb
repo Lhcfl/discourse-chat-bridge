@@ -11,162 +11,276 @@ module ::ChatBridgeModule
       PROVIDER_ID = 1
       PROVIDER_SLUG = "Telegram".freeze
 
-      def self.handleTgMessage(message, edit = false)
-        begin
-          return unless SiteSetting.chat_bridge_enabled
-          return unless SiteSetting.chat_enabled
+      class HandleTgMessage
+        include Service::Base
 
-          channel_id =
-            ::ChatBridgeModule::Provider::TelegramBridge.getChannelId? message["chat"]["id"]
+        # @!method call(message:, edit:)
+        #   @param message [Telegram Message] Telegram message
+        #   @param edit [Boolean] [Optional] If this is a message edition
 
-          if channel_id.nil?
-            return(
-              Rails.logger.warn(
-                "[Telegram Bridge] Received a telegram message but no channel id found. details: #{JSON.dump(message)}",
-              )
+        policy :require_plugin_enabled
+        contract
+        model :channel_id
+        policy :require_channel_id_vaild
+        policy :require_message_from_valid
+        model :bot
+        model :fake_user
+
+        model :message_to_edit, optional: true
+        model :message_creation
+        policy :message_creation_succeed
+        step :record_message
+        step :after_succeed
+
+        class Contract
+          attribute :message
+          attribute :edit, :boolean, default: false
+
+          validates :message, presence: true
+        end
+
+        private
+
+        def require_plugin_enabled(*)
+          SiteSetting.chat_bridge_enabled && SiteSetting.chat_enabled
+        end
+
+        def fetch_channel_id(message:, **)
+          ::ChatBridgeModule::Provider::TelegramBridge.getChannelId? message["chat"]["id"]
+        end
+
+        def require_channel_id_vaild(channel_id:, **)
+          channel_id.present?
+        end
+
+        def require_message_from_valid(message:, **)
+          message["from"].present? && message["from"]["id"].present?
+        end
+
+        def fetch_bot(channel_id:, **)
+          ::ChatBridgeModule::Provider::TelegramBridge::TelegramBot.new(channel_id)
+        end
+
+        def fetch_fake_user(message:, **)
+          ::ChatBridgeModule::FakeUser::ChatBridgeFakeUser.get_or_create(
+            ::ChatBridgeModule::Provider::TelegramBridge::PROVIDER_ID,
+            message["from"]["id"].to_i,
+            ::ChatBridgeModule::Provider::TelegramBridge::PROVIDER_SLUG,
+            "#{message["from"]["id"]}.tgid",
+          )
+        end
+
+        def fetch_message_to_edit(message:, contract:, **)
+          if contract.edit
+            ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.find_by(
+              tg_msg_id: message["message_id"],
+              tg_chat_id: message["chat"]["id"],
             )
           end
-          if message["from"].nil?
-            return(
-              Rails.logger.warn(
-                "[Telegram Bridge] Received a telegram message but no message.from found. details: #{JSON.dump(message)}",
-              )
-            )
-          end
-          if message["from"]["id"].nil?
-            return(
-              Rails.logger.warn(
-                "[Telegram Bridge] Received a telegram message but no message.from.id found. details: #{JSON.dump(message)}",
-              )
-            )
-          end
+        end
 
-          bot = ::ChatBridgeModule::Provider::TelegramBridge::TelegramBot.new(channel_id)
-
-          fake_user =
-            ::ChatBridgeModule::FakeUser::ChatBridgeFakeUser.get_or_create(
-              ::ChatBridgeModule::Provider::TelegramBridge::PROVIDER_ID,
-              message["from"]["id"].to_i,
-              ::ChatBridgeModule::Provider::TelegramBridge::PROVIDER_SLUG,
-              "#{message["from"]["id"]}.tgid",
+        def fetch_message_creation(message:, bot:, fake_user:, channel_id:, message_to_edit:, **)
+          if message_to_edit.present?
+            ::ChatBridgeModule::UpdateMessage.call(
+              message_id: message_to_edit.message_id,
+              guardian: ::ChatBridgeModule::GhostUserGuardian.new(fake_user.user),
+              **::ChatBridgeModule::Provider::TelegramBridge.make_discourse_message(
+                bot,
+                fake_user.user,
+                message,
+              ),
             )
-
-          creator = nil
-          if edit
-            message_id =
-              ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.find_by(
-                tg_msg_id: message["message_id"],
-                tg_chat_id: message["chat"]["id"],
-              ).message_id
-            creator =
-              ::ChatBridgeModule::UpdateMessage.call(
-                message_id:,
-                guardian: ::ChatBridgeModule::GhostUserGuardian.new(fake_user.user),
-                **::ChatBridgeModule::Provider::TelegramBridge.make_discourse_message(
-                  bot,
-                  fake_user.user,
-                  message,
-                ),
-              )
           else
-            creator =
-              ::ChatBridgeModule::CreateMessage.call(
-                chat_channel_id: channel_id,
-                guardian: ::ChatBridgeModule::GhostUserGuardian.new(fake_user.user),
-                **::ChatBridgeModule::Provider::TelegramBridge.make_discourse_message(
-                  bot,
-                  fake_user.user,
-                  message,
-                ),
-              )
+            ::ChatBridgeModule::CreateMessage.call(
+              chat_channel_id: channel_id,
+              guardian: ::ChatBridgeModule::GhostUserGuardian.new(fake_user.user),
+              **::ChatBridgeModule::Provider::TelegramBridge.make_discourse_message(
+                bot,
+                fake_user.user,
+                message,
+              ),
+            )
           end
+        end
 
-          if creator.failure?
-            Rails.logger.warn "[Telegram Bridge] Chat message failed to send:\n#{creator.inspect_steps.inspect}\n#{creator.inspect_steps.error}"
-            return nil
+        def message_creation_succeed(message_creation:, **)
+          if message_creation.failure?
+            raise "In message creation: #{creator.inspect_steps.inspect}\n#{creator.inspect_steps.error}"
           end
+          true
+        end
 
+        def record_message(message:, message_creation:, fake_user:, channel_id:, **)
           ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.create_or_update!(
             tg_msg_id: message["message_id"],
             tg_chat_id: message["chat"]["id"],
-            message_id: creator.message.id,
+            message_id: message_creation.message_instance.id,
             raw: JSON.dump(message),
             user_id: fake_user.user.id,
             tg_user_id: message["from"].present? && message["from"]["id"],
             chat_id: channel_id,
           )
+        end
 
-          update_user_profile_from_tg(fake_user.user, message, channel_id)
-        rescue => exception
-          Rails.logger.warn(
-            "[Telegram Bridge] Failed to bridge message for #{JSON.dump(exception)}. details: #{JSON.dump(message)}",
+        def after_succeed(fake_user:, message:, channel_id:, **)
+          ::ChatBridgeModule::Provider::TelegramBridge.update_user_profile_from_tg(
+            fake_user.user,
+            message,
+            channel_id,
           )
         end
       end
 
       ::ChatBridgeModule::Provider::TelegramBridge::TelegramEvent.on(:message) do |message|
         Scheduler::Defer.later("Bridge a telegram message to discourse") do
-          ::ChatBridgeModule::Provider::TelegramBridge.handleTgMessage message
+          ::ChatBridgeModule::Provider::TelegramBridge::HandleTgMessage
+            .call(message:)
+            .tap do |result|
+              if result.failure?
+                Rails.logger.warn(
+                  "[Telegram Bridge] Failed to bridge message: \n#{result.inspect_steps.inspect}\n#{result.inspect_steps.error} \n----------\nIn message: #{YAML.dump(message)}",
+                )
+              end
+            end
         end
       end
 
       ::ChatBridgeModule::Provider::TelegramBridge::TelegramEvent.on(:edited_message) do |message|
-        Scheduler::Defer.later("Bridge a telegram message to discourse") do
-          ::ChatBridgeModule::Provider::TelegramBridge.handleTgMessage message, true
+        Scheduler::Defer.later("Bridge a telegram message edit to discourse") do
+          ::ChatBridgeModule::Provider::TelegramBridge::HandleTgMessage
+            .call(message:, edit: true)
+            .tap do |result|
+              if result.failure?
+                Rails.logger.warn(
+                  "[Telegram Bridge] Failed to bridge edited_message: \n#{result.inspect_steps.inspect}\n#{result.inspect_steps.error} \n----------\nIn message: #{YAML.dump(message)}\n----------\nMessage to edit: #{YAML.dump(result.message_to_edit)}\n",
+                )
+              end
+            end
         end
       end
 
-      def self.handleDiscourseMessage(message, channel, user, usage = 0)
-        # usage:
-        # 0 - create
-        # 1 - edit
-        # 2 - trash
+      class HandleDiscourseMessage
+        include Service::Base
 
-        return unless SiteSetting.chat_bridge_enabled
-        return unless SiteSetting.chat_enabled
+        policy :require_plugin_enabled
+        contract
+        model :bot
+        policy :require_bot_valid
+        step :ensure_not_bridge_back
+        model :telegram_message
+        step :debug_log_respond
+        step :record_message
 
-        bot = ::ChatBridgeModule::Provider::TelegramBridge::TelegramBot.new(channel.id)
-        return nil unless bot.valid?
-        fake_user = ::ChatBridgeModule::FakeUser::ChatBridgeFakeUser.find_by(user_id: user.id)
-        if fake_user&.provider_id == ::ChatBridgeModule::Provider::TelegramBridge::PROVIDER_ID
-          return nil
+        class Contract
+          attribute :message
+          attribute :channel
+          attribute :user
+          attribute :event, default: :chat_message_created
+
+          validates :message, presence: true
+          validates :channel, presence: true
+          validates :user, presence: true
         end
 
-        response_message = nil
+        private
 
-        response_message = make_telegram_message(bot, message, channel, user, usage)
+        def require_plugin_enabled(*)
+          SiteSetting.chat_bridge_enabled && SiteSetting.chat_enabled
+        end
 
-        puts "---------------"
-        puts "respond"
-        puts response_message
-        puts "---------------"
+        def fetch_bot(contract:, **)
+          ::ChatBridgeModule::Provider::TelegramBridge::TelegramBot.new(contract.channel.id)
+        end
 
-        if response_message.present? && response_message["ok"]
+        def require_bot_valid(bot:, **)
+          bot.valid?
+        end
+
+        def ensure_not_bridge_back(contract:, **)
+          if ::ChatBridgeModule::FakeUser::ChatBridgeFakeUser.find_by(
+               user_id: contract.user.id,
+             )&.provider_id == ::ChatBridgeModule::Provider::TelegramBridge::PROVIDER_ID
+            fail!("BRIDGE_BACK")
+          end
+        end
+
+        def fetch_telegram_message(bot:, contract:, **)
+          ::ChatBridgeModule::Provider::TelegramBridge.make_telegram_message(
+            bot:,
+            message: contract.message,
+            channel: contract.channel,
+            user: contract.user,
+            event: contract.event,
+          )
+        end
+
+        def debug_log_respond(telegram_message:, **)
+          Rails.logger.debug (
+                               "[Telegram Bridge] Respond from telegram:\n" +
+                                 YAML.dump(telegram_message)
+                             )
+        end
+
+        def record_message(telegram_message:, contract:, **)
+          if !telegram_message["ok"]
+            fail! ("Telegram responsed with not ok. Details: \n#{YAML.dump(telegram_message)}")
+          end
+
           ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.create_or_update!(
-            tg_msg_id: response_message["result"]["message_id"],
-            tg_chat_id: response_message["result"]["chat"]["id"],
-            message_id: message.id,
-            raw: JSON.dump(response_message["result"]),
-            user_id: user.id,
-            tg_user_id: response_message["result"]["from"]["id"],
-            chat_id: channel.id,
+            tg_msg_id: telegram_message["result"]["message_id"],
+            tg_chat_id: telegram_message["result"]["chat"]["id"],
+            message_id: contract.message.id,
+            raw: JSON.dump(telegram_message["result"]),
+            user_id: contract.user.id,
+            tg_user_id: telegram_message["result"]["from"]["id"],
+            chat_id: contract.channel.id,
           )
         end
       end
 
-      DiscourseEvent.on(:chat_message_created) do |*args|
+      DiscourseEvent.on(:chat_message_created) do |message, channel, user|
         Scheduler::Defer.later("Bridge a discourse message to telegram") do
-          ::ChatBridgeModule::Provider::TelegramBridge.handleDiscourseMessage *args
+          ::ChatBridgeModule::Provider::TelegramBridge::HandleDiscourseMessage
+            .call(message:, channel:, user:, event: :chat_message_created)
+            .tap do |result|
+              if result.failure?
+                unless result.inspect_steps.error == "BRIDGE_BACK"
+                  Rails.logger.warn(
+                    "[Telegram Bridge] Failed to bridge message to telegram: \n#{result.inspect_steps.inspect}\n#{result.inspect_steps.error} \n----------\nIn message: #{YAML.dump(message)}",
+                  )
+                end
+              end
+            end
         end
       end
-      DiscourseEvent.on(:chat_message_edited) do |*args|
+      DiscourseEvent.on(:chat_message_edited) do |message, channel, user|
         Scheduler::Defer.later("Bridge a discourse message to telegram") do
-          ::ChatBridgeModule::Provider::TelegramBridge.handleDiscourseMessage(*args, 1)
+          ::ChatBridgeModule::Provider::TelegramBridge::HandleDiscourseMessage
+            .call(message:, channel:, user:, event: :chat_message_edited)
+            .tap do |result|
+              if result.failure?
+                unless result.inspect_steps.error == "BRIDGE_BACK"
+                  Rails.logger.warn(
+                    "[Telegram Bridge] Failed to bridge message to telegram: \n#{result.inspect_steps.inspect}\n#{result.inspect_steps.error} \n----------\nIn message: #{YAML.dump(message)}",
+                  )
+                end
+              end
+            end
         end
       end
-      DiscourseEvent.on(:chat_message_trashed) do |*args|
+      DiscourseEvent.on(:chat_message_trashed) do |message, channel, user|
         Scheduler::Defer.later("Bridge a discourse message to telegram") do
-          ::ChatBridgeModule::Provider::TelegramBridge.handleDiscourseMessage(*args, 2)
+          ::ChatBridgeModule::Provider::TelegramBridge::HandleDiscourseMessage
+            .call(message:, channel:, user:, event: :chat_message_trashed)
+            .tap do |result|
+              if result.failure?
+                unless result.inspect_steps.error == "BRIDGE_BACK"
+                  Rails.logger.warn(
+                    "[Telegram Bridge] Failed to bridge message to telegram: \n#{result.inspect_steps.inspect}\n#{result.inspect_steps.error} \n----------\nIn message: #{YAML.dump(message)}",
+                  )
+                end
+              end
+            end
         end
       end
     end

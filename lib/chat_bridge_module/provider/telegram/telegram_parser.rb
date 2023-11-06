@@ -262,7 +262,7 @@ module ::ChatBridgeModule
         { message:, upload_ids:, in_reply_to_id: }
       end
 
-      def self.make_telegram_message(bot, message, channel, user, usage)
+      def self.make_telegram_message(bot:, message:, channel:, user:, event:)
         # usage:
         # 0 - create
         # 1 - edit
@@ -272,7 +272,7 @@ module ::ChatBridgeModule
 
         methodName = "sendMessage"
 
-        if usage == 2
+        if event == :chat_message_trashed
           the_message =
             ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.find_by(
               message_id: message.id,
@@ -285,7 +285,7 @@ module ::ChatBridgeModule
           return nil
         end
 
-        if usage == 1
+        if event == :chat_message_edited
           the_message =
             ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.find_by(
               message_id: message.id,

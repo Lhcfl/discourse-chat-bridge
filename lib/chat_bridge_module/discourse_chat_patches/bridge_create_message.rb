@@ -12,7 +12,7 @@ module ::ChatBridgeModule
     policy :ensure_valid_thread_for_channel
     policy :ensure_thread_matches_parent
     model :uploads, optional: true
-    model :message, :instantiate_message
+    model :message_instance, :instantiate_message
     transaction do
       step :save_message
       step :post_process_thread
