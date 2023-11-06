@@ -280,13 +280,13 @@ module ::ChatBridgeModule
 
         if msg["document"].present?
           begin
-            ext = msg["file_name"] and msg["file_name"].match(/\.[^\.]+$/)[0]
             file = msg["document"]
+            ext = file["file_name"] and file["file_name"].match(/\.[^\.]+$/)[0]
             bot.get_upload_from_file(
               user:,
               file:,
               type: "chat-composer",
-              filename: msg["file_name"] || "file",
+              filename: file["file_name"] || "file",
               ext:,
             ) do |upload|
               if upload.id
@@ -298,7 +298,7 @@ module ::ChatBridgeModule
                     user:,
                     file:,
                     type: "chat-composer",
-                    filename: msg["file_name"] || "file",
+                    filename: file["file_name"] || "file",
                   ) { |upload2| upload2.id and upload_ids.push(upload2.id) }
                 end
               end
