@@ -246,6 +246,7 @@ module ::ChatBridgeModule
         if msg["sticker"].present?
           file = msg["sticker"]
           should_download = true
+          upload_args = { ext: ".webp" }
           # TODO: support animated sticker
           if file["is_animated"] == "true" || file["is_animated"] == true
             if file["thumb"].present?
@@ -259,6 +260,7 @@ module ::ChatBridgeModule
               should_download = false
             end
           end
+          upload_args[:ext] = ".webm" if file["is_video"] == "true" || file["is_video"] == true
           if should_download
             begin
               bot.get_upload_from_file(
@@ -266,6 +268,7 @@ module ::ChatBridgeModule
                 file:,
                 type: "chat-composer",
                 filename: "sticker-#{msg["sticker"]["emoji"]}",
+                **upload_args,
               ) { |upload| upload.id and upload_ids.push(upload.id) }
             rescue => exception
               Rails.logger.warn(
@@ -284,11 +287,14 @@ module ::ChatBridgeModule
           end
 
           begin
+            ext = msg["file_name"] and msg["file_name"].match(/\.[^\.]+$/)[0]
+
             bot.get_upload_from_file(
               user:,
               file:,
               type: "chat-composer",
-              filename: "file_name",
+              filename: msg["file_name"] || file,
+              ext:,
             ) { |upload| upload.id and upload_ids.push(upload.id) }
           rescue => exception
             Rails.logger.warn(

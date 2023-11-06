@@ -56,7 +56,12 @@ module ::ChatBridgeModule
         end
 
         def download_file_from_file_id(**para, &after_download)
-          user, file_id, type, filename = para[:user], para[:file_id], para[:type], para[:filename]
+          user, file_id, type, filename, ext =
+            para[:user],
+            para[:file_id],
+            para[:type],
+            para[:filename],
+            para[:ext]
 
           type ||= "composer"
           filename ||= "#{Time.now.to_i}"
@@ -91,8 +96,16 @@ module ::ChatBridgeModule
                   )
 
                 if tempfile
-                  ext = File.extname(tempfile)
-                  ext = ".png" if ext.blank?
+                  if ext.nil?
+                    ext = File.extname(tempfile)
+                    ext = ".png" if ext.blank?
+                  end
+
+                  puts "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+                  puts tempfile
+                  puts "#{filename}#{ext}"
+                  puts YAML.dump(tempfile)
+                  puts "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
 
                   upload =
                     UploadCreator.new(
@@ -114,7 +127,7 @@ module ::ChatBridgeModule
         end
 
         def get_upload_from_file(**para, &after_get)
-          user, file, type, filename = para[:user], para[:file], para[:type], para[:filename]
+          user, file = para[:user], para[:file]
 
           return nil if file["file_id"].nil?
 
@@ -123,18 +136,19 @@ module ::ChatBridgeModule
               ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramUpload.find_by(
                 unique_id: file["file_unique_id"],
               )
-            if existed_upload.upload_id == nil
-              existed_upload.destroy!
-              existed_upload = nil
-            end
             if existed_upload.present?
-              upload = Upload.find_by(id: existed_upload.upload_id)
-              upload.user_id = user.id
-              upload.save!
-              after_get.call upload
-              return nil
+              if existed_upload.upload_id == nil
+                existed_upload.destroy!
+                existed_upload = nil
+              else
+                upload = Upload.find_by(id: existed_upload.upload_id)
+                upload.user_id = user.id
+                upload.save!
+                after_get.call upload
+                return nil
+              end
             end
-            download_file_from_file_id(user:, file_id: file["file_id"], type:, filename:) do |upl|
+            download_file_from_file_id(file_id: file["file_id"], **para) do |upl|
               if upl&.id != nil
                 ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramUpload.create!(
                   unique_id: file["file_unique_id"],
