@@ -12,6 +12,9 @@ module ::ChatBridgeModule
       PROVIDER_SLUG = "Telegram".freeze
 
       def self.handleTgMessage(message, edit = false)
+        return unless SiteSetting.chat_bridge_enabled
+        return unless SiteSetting.chat_enabled
+
         channel_id =
           ::ChatBridgeModule::Provider::TelegramBridge.getChannelId? message["chat"]["id"]
 
@@ -104,6 +107,60 @@ module ::ChatBridgeModule
       ::ChatBridgeModule::Provider::TelegramBridge::TelegramEvent.on(:edited_message) do |message|
         Scheduler::Defer.later("Bridge a telegram message to discourse") do
           ::ChatBridgeModule::Provider::TelegramBridge.handleTgMessage message, true
+        end
+      end
+
+      def self.handleDiscourseMessage(message, channel, user, usage = 0)
+        # usage:
+        # 0 - create
+        # 1 - edit
+        # 2 - trash
+
+        return unless SiteSetting.chat_bridge_enabled
+        return unless SiteSetting.chat_enabled
+
+        bot = ::ChatBridgeModule::Provider::TelegramBridge::TelegramBot.new(channel.id)
+        return nil unless bot.valid?
+        fake_user = ::ChatBridgeModule::FakeUser::ChatBridgeFakeUser.find_by(user_id: user.id)
+        if fake_user&.provider_id == ::ChatBridgeModule::Provider::TelegramBridge::PROVIDER_ID
+          return nil
+        end
+
+        response_message = nil
+
+        response_message = make_telegram_message(bot, message, channel, user, usage)
+
+        puts "---------------"
+        puts "respond"
+        puts response_message
+        puts "---------------"
+
+        if response_message.present? && response_message["ok"]
+          ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.create_or_update!(
+            tg_msg_id: response_message["result"]["message_id"],
+            tg_chat_id: response_message["result"]["chat"]["id"],
+            message_id: message.id,
+            raw: JSON.dump(response_message["result"]),
+            user_id: user.id,
+            tg_user_id: response_message["result"]["from"]["id"],
+            chat_id: channel.id,
+          )
+        end
+      end
+
+      DiscourseEvent.on(:chat_message_created) do |*args|
+        Scheduler::Defer.later("Bridge a discourse message to telegram") do
+          ::ChatBridgeModule::Provider::TelegramBridge.handleDiscourseMessage *args
+        end
+      end
+      DiscourseEvent.on(:chat_message_edited) do |*args|
+        Scheduler::Defer.later("Bridge a discourse message to telegram") do
+          ::ChatBridgeModule::Provider::TelegramBridge.handleDiscourseMessage(*args, 1)
+        end
+      end
+      DiscourseEvent.on(:chat_message_trashed) do |*args|
+        Scheduler::Defer.later("Bridge a discourse message to telegram") do
+          ::ChatBridgeModule::Provider::TelegramBridge.handleDiscourseMessage(*args, 2)
         end
       end
     end

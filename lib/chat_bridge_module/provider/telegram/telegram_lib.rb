@@ -5,7 +5,7 @@ module ::ChatBridgeModule
     module TelegramBridge
       class TelegramBot
         def initialize(discourse_chat_channel_id)
-          @vaild = false
+          @valid = false
           raise "No channel id" if discourse_chat_channel_id.nil?
 
           SiteSetting
@@ -16,13 +16,13 @@ module ::ChatBridgeModule
               if cid.to_i == discourse_chat_channel_id.to_i
                 @group_id = gid
                 @token = tok
-                @vaild = true
+                @valid = true
               end
             end
         end
 
-        def vaild?
-          @vaild
+        def valid?
+          @valid
         end
 
         def bot_token
@@ -34,7 +34,7 @@ module ::ChatBridgeModule
         end
 
         def _request(methodName, message)
-          raise "Telegram bot is not valid" unless @vaild
+          raise "Telegram bot is not valid" unless @valid
 
           http = FinalDestination::HTTP.new("api.telegram.org", 443)
           http.use_ssl = true
@@ -43,6 +43,7 @@ module ::ChatBridgeModule
 
           puts "---------------------"
           puts "Sending Telegram API request to: https://api.telegram.org/bot#{@token}/#{methodName}"
+          puts "param: #{message.to_json}"
           puts "---------------------"
 
           req = Net::HTTP::Post.new(uri, "Content-Type" => "application/json")
@@ -153,7 +154,7 @@ module ::ChatBridgeModule
           .split("|")
           .map do |config|
             cid, gid, tok = config.split(",")
-            raise "Not vaild config" if (cid.nil? || gid.nil? || tok.nil?)
+            raise "Not valid config" if (cid.nil? || gid.nil? || tok.nil?)
             cid
           end
           .uniq

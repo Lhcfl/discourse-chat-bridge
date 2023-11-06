@@ -4,6 +4,7 @@ plugins:
     client: true
   chat_telegram_bridges:
     default: ""
+    type: list
     client: false
   chat_telegram_bridge_secret_path:
     default: ""

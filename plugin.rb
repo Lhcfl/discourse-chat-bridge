@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
 # name: discourse-chat-bridge
-# about: TODO
+# about: Bridge your discourse chat channel to other platform, telegram, etc
 # version: 0.0.1
-# authors: Discourse
-# url: TODO
-# required_version: 2.7.0
+# authors: Lhc_fl
+# url: https://github.com/Lhcfl/discourse-chat-bridge
+# required_version: 3.0.0
 
 enabled_site_setting :chat_bridge_enabled
 
