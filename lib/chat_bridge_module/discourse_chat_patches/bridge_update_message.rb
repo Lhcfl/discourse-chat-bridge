@@ -25,6 +25,5 @@ module ChatBridgeModule
       step :save_revision
       step :publish
     end
-
   end
 end

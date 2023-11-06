@@ -105,7 +105,10 @@ module ::ChatBridgeModule
         if msg["reply_to_message"]
           in_reply_to_id =
             ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage
-              .find_by(tg_msg_id: msg["reply_to_message"]["message_id"], tg_chat_id: msg["chat"]["id"])
+              .find_by(
+                tg_msg_id: msg["reply_to_message"]["message_id"],
+                tg_chat_id: msg["chat"]["id"],
+              )
               &.discourse_message
               &.id
         end

@@ -49,10 +49,11 @@ module ::ChatBridgeModule
 
         creator = nil
         if edit
-          message_id = ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.find_by(
-            tg_msg_id: message["message_id"],
-            tg_chat_id: message["chat"]["id"],
-          ).message_id
+          message_id =
+            ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.find_by(
+              tg_msg_id: message["message_id"],
+              tg_chat_id: message["chat"]["id"],
+            ).message_id
           creator =
             ::ChatBridgeModule::UpdateMessage.call(
               message_id:,
