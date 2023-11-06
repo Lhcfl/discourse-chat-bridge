@@ -120,8 +120,8 @@ module ::ChatBridgeModule
           end
           @result =
             raw.gsub (
-                        %r{<aside class="onebox[^>]*?data-onebox-src="([^"]+)"[^>]*>[\s\S]+?</aside>}
-                      ) do
+                       %r{<aside class="onebox[^>]*?data-onebox-src="([^"]+)"[^>]*>[\s\S]+?</aside>}
+                     ) do
               "<a href=\"#{$1}\">#{$1}</a>"
             end
           @result.gsub! (%r{<div class=\"spoiler\">([\s\S]+?)</div>}) {
