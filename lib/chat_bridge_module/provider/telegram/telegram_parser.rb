@@ -224,9 +224,6 @@ module ::ChatBridgeModule
 
         if msg["photo"].present?
           begin
-            puts "Getting photo"
-            puts msg["photo"]
-            puts "----------"
             photo = msg["photo"]
             if msg["photo"].class == Array
               photo = photo[-1]
@@ -248,9 +245,6 @@ module ::ChatBridgeModule
 
         if msg["sticker"].present?
           begin
-            puts "Getting sticker"
-            puts msg["sticker"]
-            puts "----------"
             bot.get_upload_from_file(
               user:,
               file: msg["sticker"],
