@@ -43,7 +43,7 @@ module ::ChatBridgeModule
 
           Rails.logger.debug(
             "Sending Telegram API request to: https://api.telegram.org/bot#{@token}/#{methodName}" +
-            "param: \n#{YAML.dump(message)}"
+              "param: \n#{YAML.dump(message)}",
           )
 
           req = Net::HTTP::Post.new(uri, "Content-Type" => "application/json")
@@ -71,9 +71,7 @@ module ::ChatBridgeModule
                 download_url =
                   "https://api.telegram.org/file/bot#{@token}/#{file_path_res["result"]["file_path"]}"
 
-                Rails.logger.debug(
-                  "\n\nDownloading Telegram file from #{download_url}\n\n",
-                )
+                Rails.logger.debug("\n\nDownloading Telegram file from #{download_url}\n\n")
 
                 if SiteSetting.verbose_upload_logging
                   Rails.logger.warn(

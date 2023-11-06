@@ -39,10 +39,7 @@ module ::ChatBridgeModule
         response =
           bot._request("getUserProfilePhotos", { user_id: message["from"]["id"], limit: 1 })
 
-        Rails.logger.debug(
-          "Got response from telegram: " +
-          YAML.dump(response)
-        )
+        Rails.logger.debug("Got response from telegram: " + YAML.dump(response))
 
         if response["ok"] && response["result"].present? && response["result"]["photos"].present? &&
              response["result"]["photos"][0].present? &&
@@ -55,9 +52,7 @@ module ::ChatBridgeModule
             return "Don't need update"
           end
 
-          Rails.logger.debug(
-            "Get File id: #{response["result"]["photos"][0][0]["file_id"]}"
-          )
+          Rails.logger.debug("Get File id: #{response["result"]["photos"][0][0]["file_id"]}")
 
           bot.get_upload_from_file(
             user:,

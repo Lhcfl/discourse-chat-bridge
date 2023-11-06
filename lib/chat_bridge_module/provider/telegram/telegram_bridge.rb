@@ -4,6 +4,7 @@ require_relative "telegram_initializer"
 require_relative "telegram_lib"
 require_relative "telegram_utils"
 require_relative "telegram_parser"
+require_relative "telegram_message_helper"
 
 module ::ChatBridgeModule
   module Provider
@@ -29,7 +30,7 @@ module ::ChatBridgeModule
         model :message_to_edit, optional: true
         model :message_creation
         policy :message_creation_succeed
-        step :record_message
+        model :telegram_message
         step :after_succeed
 
         class Contract
@@ -110,7 +111,7 @@ module ::ChatBridgeModule
           true
         end
 
-        def record_message(message:, message_creation:, fake_user:, channel_id:, **)
+        def fetch_telegram_message(message:, message_creation:, fake_user:, channel_id:, **)
           ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.create_or_update!(
             tg_msg_id: message["message_id"],
             tg_chat_id: message["chat"]["id"],
@@ -167,9 +168,10 @@ module ::ChatBridgeModule
         model :bot
         policy :require_bot_valid
         step :ensure_not_bridge_back
-        model :telegram_message
+        model :telegram_response
         step :debug_log_respond
-        step :record_message
+        step :fail_when_tg_message_not_ok
+        model :telegram_message
 
         class Contract
           attribute :message
@@ -204,7 +206,7 @@ module ::ChatBridgeModule
           end
         end
 
-        def fetch_telegram_message(bot:, contract:, **)
+        def fetch_telegram_response(bot:, contract:, **)
           ::ChatBridgeModule::Provider::TelegramBridge.make_telegram_message(
             bot:,
             message: contract.message,
@@ -214,27 +216,33 @@ module ::ChatBridgeModule
           )
         end
 
-        def debug_log_respond(telegram_message:, **)
+        def debug_log_respond(telegram_response:, **)
           Rails.logger.debug (
                                "[Telegram Bridge] Respond from telegram:\n" +
-                                 YAML.dump(telegram_message)
+                                 YAML.dump(telegram_response)
                              )
         end
 
-        def record_message(telegram_message:, contract:, **)
-          if !telegram_message["ok"]
-            fail! ("Telegram responsed with not ok. Details: \n#{YAML.dump(telegram_message)}")
+        def fail_when_tg_message_not_ok(telegram_response:, **)
+          if !telegram_response["ok"]
+            fail! ("Telegram responsed with not ok. Details: \n#{YAML.dump(telegram_response)}")
           end
+        end
 
-          ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.create_or_update!(
-            tg_msg_id: telegram_message["result"]["message_id"],
-            tg_chat_id: telegram_message["result"]["chat"]["id"],
-            message_id: contract.message.id,
-            raw: JSON.dump(telegram_message["result"]),
-            user_id: contract.user.id,
-            tg_user_id: telegram_message["result"]["from"]["id"],
-            chat_id: contract.channel.id,
-          )
+        def fetch_telegram_message(telegram_response:, contract:, **)
+          if telegram_response["result"].class == Hash && telegram_response["result"]["message_id"]
+            ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.create_or_update!(
+              tg_msg_id: telegram_response["result"]["message_id"],
+              tg_chat_id: telegram_response["result"]["chat"]["id"],
+              message_id: contract.message.id,
+              raw: JSON.dump(telegram_response["result"]),
+              user_id: contract.user.id,
+              tg_user_id: telegram_response["result"]["from"]["id"],
+              chat_id: contract.channel.id,
+            )
+          else
+            telegram_response["result"]
+          end
         end
       end
 
