@@ -1,9 +1,22 @@
 {
-  "name": "discourse-plugin-name",
+  "name": "chat-bridge",
   "version": "0.0.1",
   "repository": "TODO",
   "author": "Discourse",
   "license": "MIT",
+  "scripts": {
+    "rubocop": "bundle exec rubocop .",
+    "rubocop:fix": "bundle exec rubocop --autocorrect .",
+    "stree": "bundle exec stree check Gemfile $(git ls-files '*.rb') $(git ls-files '*.rake') $(git ls-files '*.thor')", 
+    "stree:fix": "bundle exec stree write Gemfile $(git ls-files '*.rb') $(git ls-files '*.rake') $(git ls-files '*.thor')",
+    "lint": "yarn eslint --ext .js,.js.es6 --no-error-on-unmatched-pattern {test,assets,admin/assets}/javascripts",
+    "lint:fix": "yarn eslint --fix --ext .js,.js.es6 --no-error-on-unmatched-pattern {test, assets,admin/assets}/javascripts",
+    "pretty": "yarn prettier --list-different \"assets/**/*.{scss,js,es6,hbs}\"",
+    "pretty:fix": "yarn prettier -w \"assets/**/*.{scss,js,es6,hbs}\"",
+    "autocheck": "yarn rubocop && yarn stree && yarn lint && yarn pretty",
+    "autofix": "yarn rubocop:fix && yarn stree:fix && yarn lint:fix && yarn pretty:fix",
+    "autofix:ruby": "yarn rubocop:fix && yarn stree:fix"
+  },
   "devDependencies": {
     "@discourse/lint-configs": "^1.0.0",
     "ember-template-lint": "^5.11.2",
