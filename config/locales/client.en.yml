@@ -1,2 +1,4 @@
 en:
-  js:
+  site_settings:
+    chat_bridge_enabled: Enable chat bridge
+    chat_telegram_bridges: "Format: `channelId,tgChatId,tgBotToken` "
