@@ -21,6 +21,5 @@ module ::ChatBridgeModule
     end
     step :publish_new_thread
     step :process
-    step :publish_user_tracking_state
   end
 end
