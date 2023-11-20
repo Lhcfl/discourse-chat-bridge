@@ -20,6 +20,7 @@ module ::ChatBridgeModule
       step :update_channel_last_message
     end
     step :publish_new_thread
+    step :process
     step :publish_new_message_events
   end
 end
