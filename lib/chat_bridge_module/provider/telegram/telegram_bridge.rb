@@ -148,6 +148,8 @@ module ::ChatBridgeModule
                   "----------\n" + "In message:\n" + "#{YAML.dump(message)}\n" +
                   if result.message_to_edit
                     "----------\n" + "Message to edit:\n" + "#{YAML.dump(result.message_to_edit)}\n"
+                  else
+                    "\n"
                   end,
               )
             end
