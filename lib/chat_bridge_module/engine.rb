@@ -11,4 +11,6 @@ end
 require_relative "discourse_chat_patches/bridge_create_message"
 require_relative "discourse_chat_patches/bridge_update_message.rb"
 require_relative "discourse_chat_patches/ghost_user_guardian"
+
 require_relative "provider/telegram/telegram_bridge"
+require_relative "provider/matrix/matrix_bridge"

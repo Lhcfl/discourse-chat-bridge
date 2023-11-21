@@ -7,7 +7,7 @@ module ::ChatBridgeModule::Provider::TelegramBridge
     policy :require_plugin_enabled
     contract
     model :bot
-    policy :require_bot_valid
+    step :ensure_bot_valid
     step :ensure_not_bridge_back
     model :telegram_response
     step :debug_log_respond
@@ -35,8 +35,8 @@ module ::ChatBridgeModule::Provider::TelegramBridge
       ::ChatBridgeModule::Provider::TelegramBridge::TelegramBot.new(contract.channel.id)
     end
 
-    def require_bot_valid(bot:, **)
-      bot.valid?
+    def ensure_bot_valid(bot:, **)
+      fail!("INVALID_BOT") if bot.valid?
     end
 
     def ensure_not_bridge_back(contract:, **)

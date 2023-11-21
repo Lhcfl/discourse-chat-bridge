@@ -57,7 +57,7 @@ module ::ChatBridgeModule::Provider::TelegramBridge
             event:,
           )
 
-        if result.failure? && result.inspect_steps.error != "BRIDGE_BACK"
+        if result.failure? && !(%w[BRIDGE_BACK INVALID_BOT].include? result.inspect_steps.error)
           Rails.logger.warn(
             "[Discourse -> Telegram] Failed in #{event}: \n#{result.inspect_steps.inspect}\n#{result.inspect_steps.error} \n----------\nIn message: #{YAML.dump(message)}",
           )
