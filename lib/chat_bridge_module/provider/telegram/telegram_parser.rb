@@ -6,11 +6,13 @@ module ::ChatBridgeModule
       class Parser
         def initialize(str, entities)
           @only_str = str
+
           if entities.class == Array
             @entities = entities
           else
-            @entities = entities.keys.map { |k| @entities[k] }
+            @entities = entities.keys.map { |k| entities[k] }
           end
+
           @entities_grouped = []
           group = []
           o_a_now = 0
@@ -206,8 +208,34 @@ module ::ChatBridgeModule
         ""
       end
 
+      def self.make_display_name(tg_user)
+        if tg_user["last_name"].present?
+          "#{tg_user["first_name"]} #{tg_user["last_name"]}"
+        else
+          "#{tg_user["first_name"]}"
+        end
+      end
+
+      def self.make_display_forward(msg)
+        if msg["forward_from"].present?
+          result =
+            ::ChatBridgeModule::Provider::TelegramBridge.make_display_name(msg["forward_from"])
+        elsif msg["forward_sender_name"]
+          result = msg["forward_sender_name"]
+        elsif msg["forward_from_chat"]
+          result =
+            "[#{msg["forward_from_chat"]["title"]}](https://t.me/#{msg["forward_from_chat"]["username"]}/#{msg["forward_from_message_id"]})"
+        else
+          return ""
+        end
+        "***Forwarded from #{result}***\n"
+      end
+
       def self.make_discourse_message(bot, user, msg)
-        message = ::ChatBridgeModule::Provider::TelegramBridge.make_markdown_from_message(msg)
+        message =
+          ::ChatBridgeModule::Provider::TelegramBridge.make_display_forward(msg) +
+            ::ChatBridgeModule::Provider::TelegramBridge.make_markdown_from_message(msg)
+
         upload_ids = []
         in_reply_to_id = nil
 
