@@ -36,7 +36,7 @@ module ::ChatBridgeModule::Provider::TelegramBridge
     end
 
     def ensure_bot_valid(bot:, **)
-      fail!("INVALID_BOT") if bot.valid?
+      fail!("INVALID_BOT") unless bot.valid?
     end
 
     def ensure_not_bridge_back(contract:, **)

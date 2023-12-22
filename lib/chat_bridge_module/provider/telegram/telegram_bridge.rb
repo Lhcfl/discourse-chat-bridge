@@ -32,10 +32,10 @@ module ::ChatBridgeModule::Provider::TelegramBridge
         if result.failure?
           Rails.logger.warn(
             "[Telegram Bridge] Failed to bridge message: \n" +
-              "#{result.inspect_steps.inspect}\n#{result.inspect_steps.error}\n" + "----------\n" +
-              "In message:\n" + "#{YAML.dump(message)}\n" +
+              "#{result.inspect_steps.error}\n#{result.inspect_steps.inspect}\n" + "----------\n" +
+              "In message:\n" + "#{message_to_json}\n" +
               if result.message_to_edit
-                "----------\n" + "Message to edit:\n" + "#{YAML.dump(result.message_to_edit)}\n"
+                "----------\n" + "Message to edit:\n" + "#{result.message_to_edit.to_json}\n"
               else
                 "\n"
               end,
@@ -56,10 +56,9 @@ module ::ChatBridgeModule::Provider::TelegramBridge
             user:,
             event:,
           )
-
         if result.failure? && !(%w[BRIDGE_BACK INVALID_BOT].include? result.inspect_steps.error)
           Rails.logger.warn(
-            "[Discourse -> Telegram] Failed in #{event}: \n#{result.inspect_steps.inspect}\n#{result.inspect_steps.error} \n----------\nIn message: #{YAML.dump(message)}",
+            "[Discourse -> Telegram] Failed in #{event}: \n#{result.inspect_steps.inspect}\n#{result.inspect_steps.error} \n----------\nIn message: #{message.to_json}",
           )
         end
       end
