@@ -104,7 +104,12 @@ module ::ChatBridgeModule::Provider::TelegramBridge
       ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.create_or_update!(
         tg_msg_id: message["message_id"],
         tg_chat_id: message["chat"]["id"],
-        message_id: message_creation.message_instance.id,
+        message_id:
+          if message_creation.respose_to? :message_instance
+            message_creation.message_instance.id
+          else
+            message_creation.message.id
+          end,
         raw: JSON.dump(message),
         user_id: fake_user.user.id,
         tg_user_id: message["from"].present? && message["from"]["id"],

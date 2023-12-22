@@ -15,6 +15,7 @@
     "pretty:fix": "yarn prettier -w \"assets/**/*.{scss,js,es6,hbs}\"",
     "autocheck": "yarn rubocop && yarn stree && yarn lint && yarn pretty",
     "autofix": "yarn rubocop:fix && yarn stree:fix && yarn lint:fix && yarn pretty:fix",
+    "fr": "yarn rubocop:fix && yarn stree:fix",
     "autofix:ruby": "yarn rubocop:fix && yarn stree:fix"
   },
   "devDependencies": {
