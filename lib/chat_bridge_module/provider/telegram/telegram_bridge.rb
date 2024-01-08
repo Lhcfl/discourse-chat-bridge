@@ -33,7 +33,7 @@ module ::ChatBridgeModule::Provider::TelegramBridge
           Rails.logger.warn(
             "[Telegram Bridge] Failed to bridge message: \n" +
               "#{result.inspect_steps.error}\n#{result.inspect_steps.inspect}\n" + "----------\n" +
-              "In message:\n" + "#{message_to_json}\n" +
+              "In message:\n" + "#{result.message_instance.to_json}\n" +
               if result.message_to_edit
                 "----------\n" + "Message to edit:\n" + "#{result.message_to_edit.to_json}\n"
               else
