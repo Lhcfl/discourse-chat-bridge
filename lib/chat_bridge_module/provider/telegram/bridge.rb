@@ -12,14 +12,10 @@
           },
         )
 
-      if result.failure?
-        Rails.logger.error(
-          <<~TEXT
+      Rails.logger.error(<<~TEXT) if result.failure?
           [Telegram Bridge] Failed to bridge message:
           #{result.inspect_steps}
           TEXT
-        )
-      end
     end
   end
 end

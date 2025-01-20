@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 module ::ChatBridgeModule::Provider::Telegram::Parsers
-
   # Parse discourse html to telegram html
   class TgHtml
     MARKDOWN_FEATURES = %w[

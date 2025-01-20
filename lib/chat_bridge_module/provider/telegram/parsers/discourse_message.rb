@@ -2,24 +2,13 @@
 
 module ::ChatBridgeModule::Provider::Telegram::Parsers
   module DiscourseMessage
-
     def self.make_markdown_from_message(message)
       if message["text"].present?
         return message["text"] if message["entities"].blank?
-        return(
-          TelegramMessage.parse(
-            message["text"],
-            message["entities"],
-          )
-        )
+        return(TelegramMessage.parse(message["text"], message["entities"]))
       elsif message["caption"].present?
         return message["caption"] if message["caption_entities"].blank?
-        return(
-          TelegramMessage.parse(
-            message["caption"],
-            message["caption_entities"],
-          )
-        )
+        return(TelegramMessage.parse(message["caption"], message["caption_entities"]))
       end
       ""
     end
@@ -27,7 +16,9 @@ module ::ChatBridgeModule::Provider::Telegram::Parsers
     def self.make_display_forward(msg)
       if msg["forward_from"].present?
         result =
-          ::ChatBridgeModule::Provider::Telegram::Parsers::TelegramMessage.make_display_name(msg["forward_from"])
+          ::ChatBridgeModule::Provider::Telegram::Parsers::TelegramMessage.make_display_name(
+            msg["forward_from"],
+          )
       elsif msg["forward_sender_name"]
         result = msg["forward_sender_name"]
       elsif msg["forward_from_chat"]

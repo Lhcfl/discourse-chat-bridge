@@ -25,7 +25,9 @@ module ::ChatBridgeModule::Provider::Telegram::Services
     def set_name(params:)
       name = params.message["from"]["first_name"]
       begin
-        name = "#{name} #{params.message["from"]["last_name"]}" if params.message["from"]["last_name"]
+        name = "#{name} #{params.message["from"]["last_name"]}" if params.message["from"][
+          "last_name"
+        ]
         name = "[Telegram] #{name}"
         if params.user.name != name
           params.user.name = name
@@ -56,15 +58,18 @@ module ::ChatBridgeModule::Provider::Telegram::Services
 
     def update_avatar(params:)
       response =
-        params.bot._request("getUserProfilePhotos", { user_id: params.message["from"]["id"], limit: 1 })
+        params.bot._request(
+          "getUserProfilePhotos",
+          { user_id: params.message["from"]["id"], limit: 1 },
+        )
 
       if response["ok"] && response["result"].present? && response["result"]["photos"].present? &&
            response["result"]["photos"][0].present? &&
            response["result"]["photos"][0][0]["file_id"].present? &&
            response["result"]["photos"][0][0]["file_unique_id"].present?
         if ::ChatBridgeModule::Provider::Telegram::ChatBridgeTelegramUserInfo.find_by(
-               tg_user_id: params.message["from"]["id"],
-             )&.avatar_file_id == response["result"]["photos"][0][0]["file_unique_id"]
+             tg_user_id: params.message["from"]["id"],
+           )&.avatar_file_id == response["result"]["photos"][0][0]["file_unique_id"]
           return "Don't need update"
         end
 
@@ -84,6 +89,5 @@ module ::ChatBridgeModule::Provider::Telegram::Services
         end
       end
     end
-
   end
 end

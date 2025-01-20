@@ -9,11 +9,11 @@ module ChatBridgeModule::Provider::Telegram
         creator =
           case event
           when :chat_message_created
-           TelegramApi::CreateMessage.call(**args)
+            TelegramApi::CreateMessage.call(**args)
           when :chat_message_edited
-           TelegramApi::EditMessage.call(**args)
+            TelegramApi::EditMessage.call(**args)
           when :chat_message_trashed
-           TelegramApi::DeleteMessage.call(**args)
+            TelegramApi::DeleteMessage.call(**args)
           else
             raise "Not implemented chat message event"
           end
@@ -29,4 +29,3 @@ module ChatBridgeModule::Provider::Telegram
     end
   end
 end
-

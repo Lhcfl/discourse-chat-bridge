@@ -32,8 +32,7 @@ module ::ChatBridgeModule
         if external_user_id.class == Integer
           fake_user = self.create(user_id: u.id, provider_id:, external_user_id:)
         else
-          fake_user =
-            self.create(user_id: u.id, provider_id:, external_username: external_user_id)
+          fake_user = self.create(user_id: u.id, provider_id:, external_username: external_user_id)
         end
       end
 

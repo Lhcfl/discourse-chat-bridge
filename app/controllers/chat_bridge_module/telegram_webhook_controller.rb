@@ -4,10 +4,10 @@ module ::ChatBridgeModule
 
     before_action :telegram_token_valid?, only: :hook
     skip_before_action :check_xhr,
-                      :preload_json,
-                      :verify_authenticity_token,
-                      :redirect_to_login_if_required,
-                      only: :hook
+                       :preload_json,
+                       :verify_authenticity_token,
+                       :redirect_to_login_if_required,
+                       only: :hook
 
     def hook
       %i[
@@ -27,10 +27,7 @@ module ::ChatBridgeModule
         chat_join_request
       ].each do |symbol|
         if params.key?(symbol.to_s)
-          ::ChatBridgeModule::Provider::Telegram::TelegramEvent.trigger(
-            symbol,
-            params[symbol.to_s],
-          )
+          ::ChatBridgeModule::Provider::Telegram::TelegramEvent.trigger(symbol, params[symbol.to_s])
         end
       end
 
@@ -43,7 +40,7 @@ module ::ChatBridgeModule
       params.require(:token)
 
       if SiteSetting.chat_telegram_bridge_secret_path.blank? ||
-          SiteSetting.chat_telegram_bridge_secret_path != params[:token]
+           SiteSetting.chat_telegram_bridge_secret_path != params[:token]
         raise Discourse::InvalidAccess.new
       end
     end

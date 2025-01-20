@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 module ::ChatBridgeModule::Provider::Telegram::Parsers
-
   # Parse telegram message to discourse markdown
   class TelegramMessage
     def initialize(str, entities)

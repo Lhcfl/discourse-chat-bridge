@@ -34,9 +34,8 @@ module ::ChatBridgeModule::Provider::Telegram::Services
     end
 
     def ensure_not_bridge_back(params:)
-      if ::ChatBridgeModule::ChatBridgeFakeUser.find_by(
-           user_id: params.user.id,
-         )&.provider_id == ::ChatBridgeModule::Provider::Telegram::PROVIDER_ID
+      if ::ChatBridgeModule::ChatBridgeFakeUser.find_by(user_id: params.user.id)&.provider_id ==
+           ::ChatBridgeModule::Provider::Telegram::PROVIDER_ID
         fail!("BRIDGE_BACK")
       end
     end

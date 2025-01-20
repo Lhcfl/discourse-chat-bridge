@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 module ChatBridgeModule::Provider::Telegram::EventsExtension
-
   DiscourseEvent.on(:site_setting_changed) do |setting_name, old_value, new_value|
     isEnabledSetting = setting_name == :chat_bridge_enabled
     isSettingTelegramBridge = setting_name == :chat_telegram_bridges
@@ -16,6 +15,4 @@ module ChatBridgeModule::Provider::Telegram::EventsExtension
       end
     end
   end
-
 end
-

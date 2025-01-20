@@ -126,11 +126,13 @@ module ::ChatBridgeModule::Provider::Telegram::Services
 
     def after_succeed(fake_user:, params:, channel_id:)
       Scheduler::Defer.later("Telegram Bridge Update User Profile") do
-        ::ChatBridgeModule::Provider::Telegram::Services::UpdateUserProfile.call(params: {
-          user: fake_user.user,
-          message: params.message,
-          channel_id: channel_id,
-        })
+        ::ChatBridgeModule::Provider::Telegram::Services::UpdateUserProfile.call(
+          params: {
+            user: fake_user.user,
+            message: params.message,
+            channel_id: channel_id,
+          },
+        )
       end
     end
   end
