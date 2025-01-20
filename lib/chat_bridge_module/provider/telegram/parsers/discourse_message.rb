@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module ChatBridgeModule::Provider::Parsers
+module ::ChatBridgeModule::Provider::Telegram::Parsers
   module DiscourseMessage
 
     def make_markdown_from_message(message)
