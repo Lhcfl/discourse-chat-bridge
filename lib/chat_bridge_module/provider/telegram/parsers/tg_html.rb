@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
-module ::ChatBridgeModule::Provider::TelegramBridge
+module ::ChatBridgeModule::Provider::Telegram::Parsers
+
+  # Parse discourse html to telegram html
   class TgHtml
     MARKDOWN_FEATURES = %w[
       bbcode-block
@@ -99,6 +101,7 @@ module ::ChatBridgeModule::Provider::TelegramBridge
     def result
       @result
     end
+
     def self.parse(raw)
       self.new(raw).result.strip
     end

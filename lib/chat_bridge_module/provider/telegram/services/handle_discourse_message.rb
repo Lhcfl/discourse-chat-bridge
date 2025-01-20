@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module ::ChatBridgeModule::Provider::TelegramBridge
+module ::ChatBridgeModule::Provider::Telegram::Services
   class HandleDiscourseMessage
     include Service::Base
 
@@ -26,7 +26,7 @@ module ::ChatBridgeModule::Provider::TelegramBridge
     private
 
     def fetch_bot(params:)
-      ::ChatBridgeModule::Provider::TelegramBridge::TelegramBot.new(params.channel.id)
+      ::ChatBridgeModule::Provider::Telegram::TelegramApi::TelegramBot.new(params.channel.id)
     end
 
     def ensure_bot_valid(bot:)
@@ -34,15 +34,15 @@ module ::ChatBridgeModule::Provider::TelegramBridge
     end
 
     def ensure_not_bridge_back(params:)
-      if ::ChatBridgeModule::FakeUser::ChatBridgeFakeUser.find_by(
+      if ::ChatBridgeModule::ChatBridgeFakeUser.find_by(
            user_id: params.user.id,
-         )&.provider_id == ::ChatBridgeModule::Provider::TelegramBridge::PROVIDER_ID
+         )&.provider_id == ::ChatBridgeModule::Provider::Telegram::PROVIDER_ID
         fail!("BRIDGE_BACK")
       end
     end
 
     def fetch_telegram_response(bot:, params:)
-      ::ChatBridgeModule::Provider::TelegramBridge.make_telegram_message(
+      ::ChatBridgeModule::Provider::Telegram::TelegramMessage.make(
         bot:,
         message: params.message,
         channel: params.channel,
@@ -66,7 +66,7 @@ module ::ChatBridgeModule::Provider::TelegramBridge
 
     def fetch_telegram_message(telegram_response:, params:)
       if telegram_response["result"].class == Hash && telegram_response["result"]["message_id"]
-        ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.create_or_update!(
+        ::ChatBridgeModule::Provider::Telegram::ChatBridgeTelegramMessage.create_or_update!(
           tg_msg_id: telegram_response["result"]["message_id"],
           tg_chat_id: telegram_response["result"]["chat"]["id"],
           message_id: params.message.id,

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module ::ChatBridgeModule::Provider::TelegramBridge
+module ::ChatBridgeModule::Provider::Telegram::Services
   class HandleTgMessage
     include Service::Base
 
@@ -30,7 +30,18 @@ module ::ChatBridgeModule::Provider::TelegramBridge
     private
 
     def fetch_channel_id(params:)
-      ::ChatBridgeModule::Provider::TelegramBridge.getChannelId? params.message["chat"]["id"]
+      chat_id = params.message["chat"]["id"]
+      return nil if chat_id.nil?
+
+      SiteSetting
+        .chat_telegram_bridges
+        .split("|")
+        .each do |config|
+          channel_id, cid, _token = config.split(",")
+          return channel_id if cid.to_s == chat_id.to_s
+        end
+
+      nil
     end
 
     def require_channel_id_vaild(channel_id:)
@@ -42,21 +53,21 @@ module ::ChatBridgeModule::Provider::TelegramBridge
     end
 
     def fetch_bot(channel_id:)
-      ::ChatBridgeModule::Provider::TelegramBridge::TelegramBot.new(channel_id)
+      ::ChatBridgeModule::Provider::Telegram::TelegramApi::TelegramBot.new(channel_id)
     end
 
     def fetch_fake_user(params:)
-      ::ChatBridgeModule::FakeUser::ChatBridgeFakeUser.get_or_create(
-        ::ChatBridgeModule::Provider::TelegramBridge::PROVIDER_ID,
+      ::ChatBridgeModule::ChatBridgeFakeUser.get_or_create(
+        ::ChatBridgeModule::Provider::Telegram::PROVIDER_ID,
         params.message["from"]["id"].to_i,
-        ::ChatBridgeModule::Provider::TelegramBridge::PROVIDER_SLUG,
+        ::ChatBridgeModule::Provider::Telegram::PROVIDER_SLUG,
         "#{params.message["from"]["id"]}.tgid",
       )
     end
 
     def fetch_message_to_edit(params:)
       if params.edit
-        ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.find_by(
+        ::ChatBridgeModule::Provider::Telegram::ChatBridgeTelegramMessage.find_by(
           tg_msg_id: params.message["message_id"],
           tg_chat_id: params.message["chat"]["id"],
         )
@@ -69,7 +80,7 @@ module ::ChatBridgeModule::Provider::TelegramBridge
           guardian: ::ChatBridgeModule::GhostUserGuardian.new(fake_user.user),
           params: {
             message_id: message_to_edit.message_id,
-            **::ChatBridgeModule::Provider::TelegramBridge.make_discourse_message(
+            **::ChatBridgeModule::Provider::Telegram::Parsers::DiscourseMessage.make(
               bot,
               fake_user.user,
               params.message,
@@ -81,7 +92,7 @@ module ::ChatBridgeModule::Provider::TelegramBridge
           guardian: ::ChatBridgeModule::GhostUserGuardian.new(fake_user.user),
           params: {
             chat_channel_id: channel_id,
-            **::ChatBridgeModule::Provider::TelegramBridge.make_discourse_message(
+            **::ChatBridgeModule::Provider::Telegram::Parsers::DiscourseMessage.make(
               bot,
               fake_user.user,
               params.message,
@@ -102,7 +113,7 @@ module ::ChatBridgeModule::Provider::TelegramBridge
     end
 
     def fetch_telegram_message(params:, message_creation:, fake_user:, channel_id:)
-      ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.create_or_update!(
+      ::ChatBridgeModule::Provider::Telegram::ChatBridgeTelegramMessage.create_or_update!(
         tg_msg_id: params.message["message_id"],
         tg_chat_id: params.message["chat"]["id"],
         message_id: message_creation.message_instance.id,
@@ -114,11 +125,13 @@ module ::ChatBridgeModule::Provider::TelegramBridge
     end
 
     def after_succeed(fake_user:, params:, channel_id:)
-      ::ChatBridgeModule::Provider::TelegramBridge.update_user_profile_from_tg(
-        fake_user.user,
-        params.message,
-        channel_id,
-      )
+      Scheduler::Defer.later("Telegram Bridge Update User Profile") do
+        ::ChatBridgeModule::Provider::Telegram::Services::UpdateUserProfile.call(params: {
+          user: fake_user.user,
+          message: params.message,
+          channel_id: channel_id,
+        })
+      end
     end
   end
 end

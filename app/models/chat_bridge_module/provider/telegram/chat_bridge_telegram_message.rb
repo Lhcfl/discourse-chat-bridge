@@ -2,7 +2,7 @@
 
 module ::ChatBridgeModule
   module Provider
-    module TelegramBridge
+    module Telegram
       class ChatBridgeTelegramMessage < ActiveRecord::Base
         self.table_name = "chat_bridge_telegram_messages"
 

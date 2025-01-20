@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
-module ::ChatBridgeModule::Provider::TelegramBridge
-  class Parser
+module ::ChatBridgeModule::Provider::Telegram::Parsers
+
+  # Parse telegram message to discourse markdown
+  class TelegramMessage
     def initialize(str, entities)
       @only_str = str
 
@@ -78,6 +80,14 @@ module ::ChatBridgeModule::Provider::TelegramBridge
 
     def self.parse(str, entities)
       self.new(str, entities).result
+    end
+
+    def self.make_display_name(tg_user)
+      if tg_user["last_name"].present?
+        "#{tg_user["first_name"]} #{tg_user["last_name"]}"
+      else
+        "#{tg_user["first_name"]}"
+      end
     end
   end
 end

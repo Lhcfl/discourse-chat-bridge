@@ -13,12 +13,19 @@ module ::ChatBridgeModule
   PLUGIN_NAME = "discourse-chat-bridge"
 end
 
-require_relative "app/models/chat_bridge_fake_user"
-require_relative "app/models/chat_bridge_telegram_user_info"
-require_relative "app/models/chat_bridge_telegram_message"
-require_relative "app/models/chat_bridge_telegram_upload"
+module ::ChatBridgeModule
+  module Provider
+    module Telegram
+      PROVIDER_ID = 1
+      PROVIDER_SLUG = "Telegram".freeze
+    end
+  end
+end
+
+require_relative "lib/chat_bridge_module/engine"
 
 after_initialize do
-  # Code which should run after Rails has finished booting
-  require_relative "lib/chat_bridge_module/engine"
+  require_relative "lib/chat_bridge_module/discourse_chat_patches/ghost_user_guardian"
+
+  require_relative "lib/chat_bridge_module/provider/telegram/bridge"
 end
