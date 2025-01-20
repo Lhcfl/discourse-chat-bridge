@@ -6,14 +6,7 @@ module ::ChatBridgeModule
       class TelegramMessageCreator
         include Service::Base
 
-        contract
-        model :to_send
-        model :text
-        step :link_reply_to
-        step :determin_type
-        model :response
-
-        class Contract
+        params do
           attribute :bot
           attribute :message
           attribute :channel
@@ -24,6 +17,12 @@ module ::ChatBridgeModule
           validates :channel, presence: true
           validates :user, presence: true
         end
+
+        model :to_send
+        model :text
+        step :link_reply_to
+        step :determin_type
+        model :response
 
         private
 
@@ -65,7 +64,6 @@ module ::ChatBridgeModule
       end
 
       class TelegramMessageEditor < TelegramMessageCreator
-        contract
         model :tg_message
         model :to_send
         model :text
@@ -96,7 +94,6 @@ module ::ChatBridgeModule
       end
 
       class TelegramMessageDeleter < TelegramMessageEditor
-        contract
         model :tg_message
         model :to_send
         model :response

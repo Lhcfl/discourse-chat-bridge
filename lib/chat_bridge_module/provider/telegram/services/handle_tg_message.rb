@@ -9,7 +9,14 @@ module ::ChatBridgeModule::Provider::TelegramBridge
     #   @param edit [Boolean] [Optional] If this is a message edition
 
     policy :require_plugin_enabled
-    contract
+
+    params do
+      attribute :message
+      attribute :edit, :boolean, default: false
+
+      validates :message, presence: true
+    end
+
     model :channel_id
     policy :require_channel_id_vaild
     policy :require_message_from_valid
@@ -21,13 +28,6 @@ module ::ChatBridgeModule::Provider::TelegramBridge
     policy :message_creation_succeed
     model :telegram_message
     step :after_succeed
-
-    class Contract
-      attribute :message
-      attribute :edit, :boolean, default: false
-
-      validates :message, presence: true
-    end
 
     private
 
@@ -60,8 +60,8 @@ module ::ChatBridgeModule::Provider::TelegramBridge
       )
     end
 
-    def fetch_message_to_edit(message:, contract:, **)
-      if contract.edit
+    def fetch_message_to_edit(message:, params:, **)
+      if params.edit
         ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.find_by(
           tg_msg_id: message["message_id"],
           tg_chat_id: message["chat"]["id"],
@@ -71,7 +71,7 @@ module ::ChatBridgeModule::Provider::TelegramBridge
 
     def fetch_message_creation(message:, bot:, fake_user:, channel_id:, message_to_edit:, **)
       if message_to_edit.present?
-        ::ChatBridgeModule::UpdateMessage.call(
+        ::Chat::UpdateMessage.call(
           message_id: message_to_edit.message_id,
           guardian: ::ChatBridgeModule::GhostUserGuardian.new(fake_user.user),
           **::ChatBridgeModule::Provider::TelegramBridge.make_discourse_message(
@@ -81,8 +81,9 @@ module ::ChatBridgeModule::Provider::TelegramBridge
           ),
         )
       else
-        ::ChatBridgeModule::CreateMessage.call(
+        ::Chat::CreateMessage.call(
           chat_channel_id: channel_id,
+          enforce_membership: false,
           guardian: ::ChatBridgeModule::GhostUserGuardian.new(fake_user.user),
           **::ChatBridgeModule::Provider::TelegramBridge.make_discourse_message(
             bot,

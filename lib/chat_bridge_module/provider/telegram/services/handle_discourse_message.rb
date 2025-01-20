@@ -5,16 +5,8 @@ module ::ChatBridgeModule::Provider::TelegramBridge
     include Service::Base
 
     policy :require_plugin_enabled
-    contract
-    model :bot
-    step :ensure_bot_valid
-    step :ensure_not_bridge_back
-    model :telegram_response
-    step :debug_log_respond
-    step :fail_when_tg_message_not_ok
-    model :telegram_message
 
-    class Contract
+    params do
       attribute :message
       attribute :channel
       attribute :user
@@ -25,35 +17,43 @@ module ::ChatBridgeModule::Provider::TelegramBridge
       validates :user, presence: true
     end
 
+    model :bot
+    step :ensure_bot_valid
+    step :ensure_not_bridge_back
+    model :telegram_response
+    step :debug_log_respond
+    step :fail_when_tg_message_not_ok
+    model :telegram_message
+
     private
 
     def require_plugin_enabled(*)
       SiteSetting.chat_bridge_enabled && SiteSetting.chat_enabled
     end
 
-    def fetch_bot(contract:, **)
-      ::ChatBridgeModule::Provider::TelegramBridge::TelegramBot.new(contract.channel.id)
+    def fetch_bot(params:, **)
+      ::ChatBridgeModule::Provider::TelegramBridge::TelegramBot.new(params.channel.id)
     end
 
     def ensure_bot_valid(bot:, **)
       fail!("INVALID_BOT") unless bot.valid?
     end
 
-    def ensure_not_bridge_back(contract:, **)
+    def ensure_not_bridge_back(params:, **)
       if ::ChatBridgeModule::FakeUser::ChatBridgeFakeUser.find_by(
-           user_id: contract.user.id,
+           user_id: params.user.id,
          )&.provider_id == ::ChatBridgeModule::Provider::TelegramBridge::PROVIDER_ID
         fail!("BRIDGE_BACK")
       end
     end
 
-    def fetch_telegram_response(bot:, contract:, **)
+    def fetch_telegram_response(bot:, params:, **)
       ::ChatBridgeModule::Provider::TelegramBridge.make_telegram_message(
         bot:,
-        message: contract.message,
-        channel: contract.channel,
-        user: contract.user,
-        event: contract.event,
+        message: params.message,
+        channel: params.channel,
+        user: params.user,
+        event: params.event,
       )
     end
 
@@ -70,16 +70,16 @@ module ::ChatBridgeModule::Provider::TelegramBridge
       end
     end
 
-    def fetch_telegram_message(telegram_response:, contract:, **)
+    def fetch_telegram_message(telegram_response:, params:, **)
       if telegram_response["result"].class == Hash && telegram_response["result"]["message_id"]
         ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.create_or_update!(
           tg_msg_id: telegram_response["result"]["message_id"],
           tg_chat_id: telegram_response["result"]["chat"]["id"],
-          message_id: contract.message.id,
+          message_id: params.message.id,
           raw: JSON.dump(telegram_response["result"]),
-          user_id: contract.user.id,
+          user_id: params.user.id,
           tg_user_id: telegram_response["result"]["from"]["id"],
-          chat_id: contract.channel.id,
+          chat_id: params.channel.id,
         )
       else
         telegram_response["result"]
