@@ -4,11 +4,9 @@ module ::ChatBridgeModule::Provider::TelegramBridge
   class HandleTgMessage
     include Service::Base
 
-    # @!method call(message:, edit:)
+    # @!method call(params:, edit:)
     #   @param message [Telegram Message] Telegram message
-    #   @param edit [Boolean] [Optional] If this is a message edition
-
-    policy :require_plugin_enabled
+    #   @param edit [Boolean] [Optional] If this is a params.message edition
 
     params do
       attribute :message
@@ -17,6 +15,7 @@ module ::ChatBridgeModule::Provider::TelegramBridge
       validates :message, presence: true
     end
 
+    policy :require_plugin_enabled
     model :channel_id
     policy :require_channel_id_vaild
     policy :require_message_from_valid
@@ -31,92 +30,98 @@ module ::ChatBridgeModule::Provider::TelegramBridge
 
     private
 
-    def require_plugin_enabled(*)
+    def require_plugin_enabled()
       SiteSetting.chat_bridge_enabled && SiteSetting.chat_enabled
     end
 
-    def fetch_channel_id(message:, **)
-      ::ChatBridgeModule::Provider::TelegramBridge.getChannelId? message["chat"]["id"]
+    def fetch_channel_id(params:)
+      ::ChatBridgeModule::Provider::TelegramBridge.getChannelId? params.message["chat"]["id"]
     end
 
-    def require_channel_id_vaild(channel_id:, **)
+    def require_channel_id_vaild(channel_id:)
       channel_id.present?
     end
 
-    def require_message_from_valid(message:, **)
-      message["from"].present? && message["from"]["id"].present?
+    def require_message_from_valid(params:)
+      params.message["from"].present? && params.message["from"]["id"].present?
     end
 
-    def fetch_bot(channel_id:, **)
+    def fetch_bot(channel_id:)
       ::ChatBridgeModule::Provider::TelegramBridge::TelegramBot.new(channel_id)
     end
 
-    def fetch_fake_user(message:, **)
+    def fetch_fake_user(params:)
       ::ChatBridgeModule::FakeUser::ChatBridgeFakeUser.get_or_create(
         ::ChatBridgeModule::Provider::TelegramBridge::PROVIDER_ID,
-        message["from"]["id"].to_i,
+        params.message["from"]["id"].to_i,
         ::ChatBridgeModule::Provider::TelegramBridge::PROVIDER_SLUG,
-        "#{message["from"]["id"]}.tgid",
+        "#{params.message["from"]["id"]}.tgid",
       )
     end
 
-    def fetch_message_to_edit(message:, params:, **)
+    def fetch_message_to_edit(params:)
       if params.edit
         ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.find_by(
-          tg_msg_id: message["message_id"],
-          tg_chat_id: message["chat"]["id"],
+          tg_msg_id: params.message["message_id"],
+          tg_chat_id: params.message["chat"]["id"],
         )
       end
     end
 
-    def fetch_message_creation(message:, bot:, fake_user:, channel_id:, message_to_edit:, **)
+    def fetch_message_creation(params:, bot:, fake_user:, channel_id:, message_to_edit:)
       if message_to_edit.present?
         ::Chat::UpdateMessage.call(
-          message_id: message_to_edit.message_id,
           guardian: ::ChatBridgeModule::GhostUserGuardian.new(fake_user.user),
-          **::ChatBridgeModule::Provider::TelegramBridge.make_discourse_message(
-            bot,
-            fake_user.user,
-            message,
-          ),
+          params: {
+            message_id: message_to_edit.message_id,
+            **::ChatBridgeModule::Provider::TelegramBridge.make_discourse_message(
+              bot,
+              fake_user.user,
+              params.message,
+            ),
+          }
         )
       else
         ::Chat::CreateMessage.call(
-          chat_channel_id: channel_id,
-          enforce_membership: false,
           guardian: ::ChatBridgeModule::GhostUserGuardian.new(fake_user.user),
-          **::ChatBridgeModule::Provider::TelegramBridge.make_discourse_message(
-            bot,
-            fake_user.user,
-            message,
-          ),
+          params: {
+            chat_channel_id: channel_id,
+            **::ChatBridgeModule::Provider::TelegramBridge.make_discourse_message(
+              bot,
+              fake_user.user,
+              params.message,
+            ),
+          },
+          options: {
+            enforce_membership: false
+          }
         )
       end
     end
 
-    def message_creation_succeed(message_creation:, **)
+    def message_creation_succeed(message_creation:)
       if message_creation.failure?
-        raise "In message creation: #{message_creation.inspect_steps.inspect}\n#{message_creation.inspect_steps.error}"
+        raise "In params.message creation: #{message_creation.inspect_steps}"
       end
       true
     end
 
-    def fetch_telegram_message(message:, message_creation:, fake_user:, channel_id:, **)
+    def fetch_telegram_message(params:, message_creation:, fake_user:, channel_id:)
       ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.create_or_update!(
-        tg_msg_id: message["message_id"],
-        tg_chat_id: message["chat"]["id"],
+        tg_msg_id: params.message["message_id"],
+        tg_chat_id: params.message["chat"]["id"],
         message_id: message_creation.message_instance.id,
-        raw: JSON.dump(message),
+        raw: JSON.dump(params.message),
         user_id: fake_user.user.id,
-        tg_user_id: message["from"].present? && message["from"]["id"],
+        tg_user_id: params.message["from"].present? && params.message["from"]["id"],
         chat_id: channel_id,
       )
     end
 
-    def after_succeed(fake_user:, message:, channel_id:, **)
+    def after_succeed(fake_user:, params:, channel_id:)
       ::ChatBridgeModule::Provider::TelegramBridge.update_user_profile_from_tg(
         fake_user.user,
-        message,
+        params.message,
         channel_id,
       )
     end

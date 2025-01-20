@@ -3,21 +3,43 @@
 module ::ChatBridgeModule
   module Provider
     module TelegramBridge
-      class TelegramMessageCreator
+
+      class TelegramMessageSender
         include Service::Base
 
-        params do
-          attribute :bot
-          attribute :message
-          attribute :channel
-          attribute :user
+        private
 
-          validates :bot, presence: true
-          validates :message, presence: true
-          validates :channel, presence: true
-          validates :user, presence: true
+        def self.prepare_params
+          params do
+            attribute :bot
+            attribute :message
+            attribute :channel
+            attribute :user
+
+            validates :bot, presence: true
+            validates :message, presence: true
+            validates :channel, presence: true
+            validates :user, presence: true
+          end
         end
 
+        def fetch_tg_message(params:)
+          ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.find_by(
+            message_id: params.message.id,
+          )
+        end
+
+        def fetch_text(params:)
+          "<b>#{params.user.username}</b>: #{::ChatBridgeModule::Provider::TelegramBridge::TgHtml.parse(params.message.cooked)}"
+        end
+
+        def fetch_response(params:, to_send:)
+          params.bot._request(@methodName, to_send)
+        end
+      end
+
+      class TelegramMessageCreator < TelegramMessageSender
+        prepare_params
         model :to_send
         model :text
         step :link_reply_to
@@ -26,19 +48,15 @@ module ::ChatBridgeModule
 
         private
 
-        def fetch_to_send(bot:, **)
-          { chat_id: bot.group_id, parse_mode: "HTML" }
+        def fetch_to_send(params:)
+          { chat_id: params.bot.group_id, parse_mode: "HTML" }
         end
 
-        def fetch_text(user:, message:, **)
-          "<b>#{user.username}</b>: #{::ChatBridgeModule::Provider::TelegramBridge::TgHtml.parse(message.cooked)}"
-        end
-
-        def link_reply_to(message:, to_send:, **)
-          if message.in_reply_to_id.present?
+        def link_reply_to(params:, to_send:)
+          if params.message.in_reply_to_id.present?
             reply_to =
               ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.find_by(
-                message_id: message.in_reply_to_id,
+                message_id: params.message.in_reply_to_id,
               )
             if reply_to.present?
               to_send[:reply_to_message_id] = reply_to.tg_msg_id
@@ -47,23 +65,20 @@ module ::ChatBridgeModule
           end
         end
 
-        def determin_type(message:, to_send:, text:, **)
-          if message.uploads.blank?
+        def determin_type(params:, to_send:, text:)
+          if params.message.uploads.blank?
             @methodName = "sendMessage"
             to_send[:text] = text
           else
             @methodName = "sendPhoto"
             to_send[:caption] = text
-            to_send[:photo] = "#{Discourse.base_url}#{message.uploads[0].url}"
+            to_send[:photo] = "#{Discourse.base_url}#{params.message.uploads[0].url}"
           end
-        end
-
-        def fetch_response(bot:, to_send:, **)
-          bot._request(@methodName, to_send)
         end
       end
 
-      class TelegramMessageEditor < TelegramMessageCreator
+      class TelegramMessageEditor < TelegramMessageSender
+        prepare_params
         model :tg_message
         model :to_send
         model :text
@@ -72,17 +87,11 @@ module ::ChatBridgeModule
 
         private
 
-        def fetch_tg_message(message:, **)
-          ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.find_by(
-            message_id: message.id,
-          )
+        def fetch_to_send(params:, tg_message:)
+          { chat_id: params.bot.group_id, parse_mode: "HTML", message_id: tg_message.tg_msg_id }
         end
 
-        def fetch_to_send(bot:, tg_message:, **)
-          { chat_id: bot.group_id, parse_mode: "HTML", message_id: tg_message.tg_msg_id }
-        end
-
-        def determin_type(tg_message:, text:, to_send:, **)
+        def determin_type(tg_message:, text:, to_send:)
           if JSON.parse(tg_message.raw)["caption"].present?
             @methodName = "editMessageCaption"
             to_send[:caption] = text
@@ -93,21 +102,22 @@ module ::ChatBridgeModule
         end
       end
 
-      class TelegramMessageDeleter < TelegramMessageEditor
+      class TelegramMessageDeleter < TelegramMessageSender
+        prepare_params
         model :tg_message
         model :to_send
         model :response
 
         private
 
-        def fetch_to_send(bot:, tg_message:, **)
+        def fetch_to_send(params:, tg_message:)
           @methodName = "deleteMessage"
-          { chat_id: bot.group_id, message_id: tg_message.tg_msg_id }
+          { chat_id: params.bot.group_id, message_id: tg_message.tg_msg_id }
         end
       end
 
       def self.make_telegram_message(bot:, message:, channel:, user:, event:)
-        args = { bot:, message:, channel:, user: }
+        args = {params: { bot:, message:, channel:, user: }}
 
         begin
           creator =
@@ -122,10 +132,10 @@ module ::ChatBridgeModule
               raise "Not implemented chat message event"
             end
         rescue => exception
-          raise "Failed to make telegram messages: #{exception}"
+          raise "Failed to make telegram messages: Exception: #{exception}"
         ensure
           if creator&.failure?
-            raise "Failed to make telegram messages: #{creator.inspect_steps.inspect}\n#{creator.inspect_steps.error}"
+            raise "Failed to make telegram messages: Inspect: #{creator.inspect_steps}"
           end
         end
 

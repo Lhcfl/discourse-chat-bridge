@@ -32,7 +32,7 @@ module ::ChatBridgeModule::Provider::TelegramBridge
         if result.failure?
           Rails.logger.warn(
             "[Telegram Bridge] Failed to bridge message: \n" +
-              "#{result.inspect_steps.error}\n#{result.inspect_steps.inspect}\n" + "----------\n" +
+              "#{result.inspect_steps}\n" + "----------\n" +
               "In message:\n" + "#{result.message_instance.to_json}\n" +
               if result.message_to_edit
                 "----------\n" + "Message to edit:\n" + "#{result.message_to_edit.to_json}\n"
@@ -48,17 +48,19 @@ module ::ChatBridgeModule::Provider::TelegramBridge
   # Discourse ---> Telegram
   %i[chat_message_created chat_message_edited chat_message_trashed].each do |event|
     DiscourseEvent.on(event) do |message, channel, user|
+      next unless SiteSetting.chat_bridge_enabled && SiteSetting.chat_enabled
+
       Scheduler::Defer.later("Bridge #{event} to telegram") do
         result =
-          ::ChatBridgeModule::Provider::TelegramBridge::HandleDiscourseMessage.call(
+          ::ChatBridgeModule::Provider::TelegramBridge::HandleDiscourseMessage.call(params: {
             message:,
             channel:,
             user:,
             event:,
-          )
-        if result.failure? && !(%w[BRIDGE_BACK INVALID_BOT].include? result.inspect_steps.error)
+          })
+        if result.failure? && !(%w[BRIDGE_BACK INVALID_BOT].include? result.inspect_steps.to_s)
           Rails.logger.warn(
-            "[Discourse -> Telegram] Failed in #{event}: \n#{result.inspect_steps.inspect}\n#{result.inspect_steps.error} \n----------\nIn message: #{message.to_json}",
+            "[Discourse -> Telegram] Failed in #{event}: \n#{result.inspect_steps}",
           )
         end
       end

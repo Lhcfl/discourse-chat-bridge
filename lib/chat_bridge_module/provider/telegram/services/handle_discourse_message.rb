@@ -4,8 +4,6 @@ module ::ChatBridgeModule::Provider::TelegramBridge
   class HandleDiscourseMessage
     include Service::Base
 
-    policy :require_plugin_enabled
-
     params do
       attribute :message
       attribute :channel
@@ -27,19 +25,15 @@ module ::ChatBridgeModule::Provider::TelegramBridge
 
     private
 
-    def require_plugin_enabled(*)
-      SiteSetting.chat_bridge_enabled && SiteSetting.chat_enabled
-    end
-
-    def fetch_bot(params:, **)
+    def fetch_bot(params:)
       ::ChatBridgeModule::Provider::TelegramBridge::TelegramBot.new(params.channel.id)
     end
 
-    def ensure_bot_valid(bot:, **)
+    def ensure_bot_valid(bot:)
       fail!("INVALID_BOT") unless bot.valid?
     end
 
-    def ensure_not_bridge_back(params:, **)
+    def ensure_not_bridge_back(params:)
       if ::ChatBridgeModule::FakeUser::ChatBridgeFakeUser.find_by(
            user_id: params.user.id,
          )&.provider_id == ::ChatBridgeModule::Provider::TelegramBridge::PROVIDER_ID
@@ -47,7 +41,7 @@ module ::ChatBridgeModule::Provider::TelegramBridge
       end
     end
 
-    def fetch_telegram_response(bot:, params:, **)
+    def fetch_telegram_response(bot:, params:)
       ::ChatBridgeModule::Provider::TelegramBridge.make_telegram_message(
         bot:,
         message: params.message,
@@ -57,20 +51,20 @@ module ::ChatBridgeModule::Provider::TelegramBridge
       )
     end
 
-    def debug_log_respond(telegram_response:, **)
+    def debug_log_respond(telegram_response:)
       Rails.logger.debug (
                            "[Telegram Bridge] Respond from telegram:\n" +
                              YAML.dump(telegram_response)
                          )
     end
 
-    def fail_when_tg_message_not_ok(telegram_response:, **)
+    def fail_when_tg_message_not_ok(telegram_response:)
       if !telegram_response["ok"]
         fail! ("Telegram responsed with not ok. Details: \n#{YAML.dump(telegram_response)}")
       end
     end
 
-    def fetch_telegram_message(telegram_response:, params:, **)
+    def fetch_telegram_message(telegram_response:, params:)
       if telegram_response["result"].class == Hash && telegram_response["result"]["message_id"]
         ::ChatBridgeModule::Provider::TelegramBridge::ChatBridgeTelegramMessage.create_or_update!(
           tg_msg_id: telegram_response["result"]["message_id"],
