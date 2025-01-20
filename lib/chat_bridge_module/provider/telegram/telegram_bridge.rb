@@ -26,13 +26,13 @@ module ::ChatBridgeModule::Provider::TelegramBridge
         next unless SiteSetting.chat_bridge_enabled && SiteSetting.chat_enabled
 
         result =
-          ::ChatBridgeModule::Provider::TelegramBridge::HandleTgMessage.call(
+          ::ChatBridgeModule::Provider::TelegramBridge::HandleTgMessage.call(params: {
             message:,
             edit: event == :edited_message,
-          )
+          })
 
         if result.failure?
-          Rails.logger.warn(
+          Rails.logger.error(
             "[Telegram Bridge] Failed to bridge message: \n" +
               "#{result.inspect_steps}\n" + "----------\n" +
               "In message:\n" + "#{result.message_instance.to_json}\n" +
