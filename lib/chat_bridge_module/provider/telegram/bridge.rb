@@ -23,7 +23,7 @@ end
 
 # Discourse ---> Telegram
 %i[chat_message_created chat_message_edited chat_message_trashed].each do |event|
-  DiscourseEvent.on(event) do |message, channel, user|
+  DiscourseEvent.on(event) do |message, channel, user| # rubocop:disable Discourse/Plugins/UsePluginInstanceOn
     next unless SiteSetting.chat_bridge_enabled && SiteSetting.chat_enabled
 
     puts <<~TEXT

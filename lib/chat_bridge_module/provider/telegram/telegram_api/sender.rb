@@ -7,6 +7,8 @@ module ::ChatBridgeModule::Provider::Telegram::TelegramApi
     private
 
     def self.prepare_params
+      # prepare params
+
       params do
         attribute :bot
         attribute :message
