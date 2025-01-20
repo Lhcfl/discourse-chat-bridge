@@ -51,15 +51,14 @@ module ::ChatBridgeModule::Provider::Telegram::Services
     end
 
     def debug_log_respond(telegram_response:)
-      Rails.logger.debug (
-                           "[Telegram Bridge] Respond from telegram:\n" +
-                             YAML.dump(telegram_response)
-                         )
+      Rails.logger.debug(
+        "[Telegram Bridge] Respond from telegram:\n" + YAML.dump(telegram_response),
+      )
     end
 
     def fail_when_tg_message_not_ok(telegram_response:)
       if !telegram_response["ok"]
-        fail! ("Telegram responsed with not ok. Details: \n#{YAML.dump(telegram_response)}")
+        fail!("Telegram responsed with not ok. Details: \n#{YAML.dump(telegram_response)}")
       end
     end
 

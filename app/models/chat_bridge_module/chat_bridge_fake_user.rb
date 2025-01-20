@@ -40,3 +40,19 @@ module ::ChatBridgeModule
     end
   end
 end
+
+# == Schema Information
+#
+# Table name: chat_bridge_fake_users
+#
+#  id                :bigint           not null, primary key
+#  user_id           :integer
+#  provider_id       :integer
+#  external_user_id  :bigint
+#  external_username :string(100)
+#
+# Indexes
+#
+#  index_chat_bridge_fake_users_on_external_user_id   (external_user_id)
+#  index_chat_bridge_fake_users_on_external_username  (external_username)
+#

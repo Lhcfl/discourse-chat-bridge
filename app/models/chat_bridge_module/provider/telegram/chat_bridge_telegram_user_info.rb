@@ -24,3 +24,17 @@ module ::ChatBridgeModule
     end
   end
 end
+
+# == Schema Information
+#
+# Table name: chat_bridge_telegram_user_infos
+#
+#  id             :bigint           not null, primary key
+#  user_id        :integer
+#  tg_user_id     :bigint
+#  avatar_file_id :string(60)
+#
+# Indexes
+#
+#  index_chat_bridge_telegram_user_infos_on_user_id  (user_id)
+#

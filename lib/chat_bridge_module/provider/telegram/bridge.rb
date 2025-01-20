@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 # Telegram  ---> Discourse
 %i[message edited_message].each do |event|
   ::ChatBridgeModule::Provider::Telegram::TelegramEvent.on(event) do |message|

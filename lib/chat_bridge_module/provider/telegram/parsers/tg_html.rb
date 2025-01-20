@@ -42,20 +42,18 @@ module ::ChatBridgeModule::Provider::Telegram::Parsers
         return nil
       end
       @result =
-        raw.gsub (%r{<aside class="onebox[^>]*?data-onebox-src="([^"]+)"[^>]*>[\s\S]+?</aside>}) do
+        raw.gsub(%r{<aside class="onebox[^>]*?data-onebox-src="([^"]+)"[^>]*>[\s\S]+?</aside>}) do
           "<a href=\"#{$1}\">#{$1}</a>"
         end
-      @result.gsub! (%r{<div class=\"spoiler\">([\s\S]+?)</div>}) {
+      @result.gsub!(%r{<div class=\"spoiler\">([\s\S]+?)</div>}) do
         "<tg-spoiler>#{$1}</tg-spoiler>"
-      }
-      @result.gsub! (%r{<span class=\"spoiler\">([\s\S]+?)</span>}) {
+      end
+      @result.gsub!(%r{<span class=\"spoiler\">([\s\S]+?)</span>}) do
         "<tg-spoiler>#{$1}</tg-spoiler>"
-      }
-      @result.gsub! (%r{<img src="/images/emoji/[^/]+/([^.]+)[^>]*>}) {
-        Emoji.lookup_unicode($1)
-      }
+      end
+      @result.gsub!(%r{<img src="/images/emoji/[^/]+/([^.]+)[^>]*>}) { Emoji.lookup_unicode($1) }
 
-      @result.gsub! (/<([^>]+)>/) do |tag|
+      @result.gsub!(/<([^>]+)>/) do |tag|
         parsed = $1.split(" ")
         if ALLOWED_HTML_TAG.include? parsed[0]
           case parsed[0]
@@ -87,7 +85,7 @@ module ::ChatBridgeModule::Provider::Telegram::Parsers
         end
       end
 
-      @result.gsub! (/:([^:]+):/) do |emo|
+      @result.gsub!(/:([^:]+):/) do |emo|
         ji = Emoji.lookup_unicode($1)
         if ji.present?
           ji

@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 module ::ChatBridgeModule
   class TelegramWebhookController < ::ApplicationController
     requires_plugin ::ChatBridgeModule::PLUGIN_NAME

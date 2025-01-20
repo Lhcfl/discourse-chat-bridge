@@ -21,3 +21,16 @@ module ::ChatBridgeModule
     end
   end
 end
+
+# == Schema Information
+#
+# Table name: chat_bridge_telegram_uploads
+#
+#  id        :bigint           not null, primary key
+#  upload_id :integer
+#  unique_id :string(60)
+#
+# Indexes
+#
+#  index_chat_bridge_telegram_uploads_on_unique_id  (unique_id)
+#

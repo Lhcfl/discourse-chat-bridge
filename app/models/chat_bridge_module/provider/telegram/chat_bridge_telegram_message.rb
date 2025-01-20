@@ -24,3 +24,23 @@ module ::ChatBridgeModule
     end
   end
 end
+
+# == Schema Information
+#
+# Table name: chat_bridge_telegram_messages
+#
+#  id          :bigint           not null, primary key
+#  message_id  :bigint
+#  chat_id     :bigint
+#  user_id     :integer
+#  tg_user_id  :bigint
+#  tg_chat_id  :bigint
+#  tg_msg_id   :bigint
+#  raw         :text
+#  other_infos :text
+#
+# Indexes
+#
+#  index_chat_bridge_telegram_messages_on_message_id  (message_id)
+#  index_chat_bridge_telegram_messages_on_tg_msg_id   (tg_msg_id)
+#
