@@ -74,7 +74,7 @@ module ::ChatBridgeModule::Provider::TelegramBridge
               fake_user.user,
               params.message,
             ),
-          }
+          },
         )
       else
         ::Chat::CreateMessage.call(
@@ -88,8 +88,8 @@ module ::ChatBridgeModule::Provider::TelegramBridge
             ),
           },
           options: {
-            enforce_membership: false
-          }
+            enforce_membership: false,
+          },
         )
       end
     end

@@ -3,7 +3,6 @@
 module ::ChatBridgeModule
   module Provider
     module TelegramBridge
-
       class TelegramMessageSender
         include Service::Base
 
@@ -117,7 +116,7 @@ module ::ChatBridgeModule
       end
 
       def self.make_telegram_message(bot:, message:, channel:, user:, event:)
-        args = {params: { bot:, message:, channel:, user: }}
+        args = { params: { bot:, message:, channel:, user: } }
 
         begin
           creator =
