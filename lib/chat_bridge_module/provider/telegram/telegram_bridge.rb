@@ -23,6 +23,8 @@ module ::ChatBridgeModule::Provider::TelegramBridge
   %i[message edited_message].each do |event|
     ::ChatBridgeModule::Provider::TelegramBridge::TelegramEvent.on(event) do |message|
       Scheduler::Defer.later("Bridge a telegram #{event} to discourse") do
+        next unless SiteSetting.chat_bridge_enabled && SiteSetting.chat_enabled
+
         result =
           ::ChatBridgeModule::Provider::TelegramBridge::HandleTgMessage.call(
             message:,

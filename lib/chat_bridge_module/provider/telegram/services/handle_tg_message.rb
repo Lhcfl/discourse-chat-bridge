@@ -4,7 +4,7 @@ module ::ChatBridgeModule::Provider::TelegramBridge
   class HandleTgMessage
     include Service::Base
 
-    # @!method call(params:, edit:)
+    # @!method call(params:)
     #   @param message [Telegram Message] Telegram message
     #   @param edit [Boolean] [Optional] If this is a params.message edition
 
@@ -15,7 +15,6 @@ module ::ChatBridgeModule::Provider::TelegramBridge
       validates :message, presence: true
     end
 
-    policy :require_plugin_enabled
     model :channel_id
     policy :require_channel_id_vaild
     policy :require_message_from_valid
@@ -29,10 +28,6 @@ module ::ChatBridgeModule::Provider::TelegramBridge
     step :after_succeed
 
     private
-
-    def require_plugin_enabled
-      SiteSetting.chat_bridge_enabled && SiteSetting.chat_enabled
-    end
 
     def fetch_channel_id(params:)
       ::ChatBridgeModule::Provider::TelegramBridge.getChannelId? params.message["chat"]["id"]
