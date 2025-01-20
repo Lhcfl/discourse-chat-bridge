@@ -30,7 +30,7 @@ module ::ChatBridgeModule::Provider::TelegramBridge
 
     private
 
-    def require_plugin_enabled()
+    def require_plugin_enabled
       SiteSetting.chat_bridge_enabled && SiteSetting.chat_enabled
     end
 
