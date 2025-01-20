@@ -3,7 +3,7 @@
 module ::ChatBridgeModule::Provider::Telegram::Parsers
   module DiscourseMessage
 
-    def make_markdown_from_message(message)
+    def self.make_markdown_from_message(message)
       if message["text"].present?
         return message["text"] if message["entities"].blank?
         return(
@@ -24,7 +24,7 @@ module ::ChatBridgeModule::Provider::Telegram::Parsers
       ""
     end
 
-    def make_display_forward(msg)
+    def self.make_display_forward(msg)
       if msg["forward_from"].present?
         result =
           ::ChatBridgeModule::Provider::Telegram::Parsers::TelegramMessage.make_display_name(msg["forward_from"])
@@ -40,8 +40,7 @@ module ::ChatBridgeModule::Provider::Telegram::Parsers
     end
 
     def self.make(bot, user, msg)
-      message =
-        make_display_forward(msg) + make_markdown_from_message(msg)
+      message = self.make_display_forward(msg) + self.make_markdown_from_message(msg)
 
       upload_ids = []
       in_reply_to_id = nil
